@@ -36,21 +36,12 @@ import {
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Dataset } from "@shared/schema";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function UploadPage() {
   const { toast } = useToast();
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [previewData, setPreviewData] = useState<{ columns: string[]; rows: any[] } | null>(null);
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
+  const [datasetPreviews, setDatasetPreviews] = useState<Record<number, { columns: string[]; rows: any[] }>>({});
+  const [expandedDatasetId, setExpandedDatasetId] = useState<number | null>(null);
 
   const { data: datasets, isLoading } = useQuery<Dataset[]>({
     queryKey: ["/api/datasets"],
@@ -133,20 +124,32 @@ export default function UploadPage() {
     disabled: uploadMutation.isPending,
   });
 
-  const handlePreview = async (dataset: Dataset) => {
-    setSelectedDataset(dataset);
+  const handleExpandDataset = async (dataset: Dataset) => {
+    if (expandedDatasetId === dataset.id) {
+      setExpandedDatasetId(null);
+      return;
+    }
+
+    if (datasetPreviews[dataset.id]) {
+      setExpandedDatasetId(dataset.id);
+      return;
+    }
+
     try {
       const response = await fetch(`/api/data/${dataset.id}/preview`, {
         credentials: "include",
       });
       if (response.ok) {
         const data = await response.json();
-        setPreviewData(data);
-        setPreviewOpen(true);
+        setDatasetPreviews((prev) => ({
+          ...prev,
+          [dataset.id]: data,
+        }));
+        setExpandedDatasetId(dataset.id);
       }
     } catch (error) {
       toast({
-        title: "Preview failed",
+        title: "Failed to load preview",
         description: "Could not load dataset preview.",
         variant: "destructive",
       });
@@ -356,71 +359,97 @@ export default function UploadPage() {
                       </TableHeader>
                       <TableBody>
                         {datasets.map((dataset) => (
-                          <TableRow key={dataset.id} data-testid={`row-dataset-${dataset.id}`}>
-                            <TableCell className="font-medium">
-                              <div className="flex items-center gap-2">
-                                <FileSpreadsheet className="h-4 w-4 text-primary" />
-                                <span className="truncate max-w-[180px]">{dataset.originalName}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="secondary">{dataset.format.toUpperCase()}</Badge>
-                            </TableCell>
-                            <TableCell className="text-sm">{formatBytes(dataset.size)}</TableCell>
-                            <TableCell className="font-medium">{dataset.rowCount.toLocaleString()}</TableCell>
-                            <TableCell className="font-medium">{dataset.columns?.length || 0}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                {dataset.qualityScore ? (
-                                  <>
-                                    <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
-                                      <div 
-                                        className={`h-full ${dataset.qualityScore >= 0.8 ? 'bg-chart-4' : dataset.qualityScore >= 0.6 ? 'bg-chart-5' : 'bg-destructive'}`}
-                                        style={{ width: `${dataset.qualityScore * 100}%` }}
-                                      />
-                                    </div>
-                                    <span className={`text-sm font-medium ${getQualityColor(dataset.qualityScore)}`}>
-                                      {(dataset.qualityScore * 100).toFixed(0)}%
-                                    </span>
-                                  </>
-                                ) : (
-                                  <span className="text-muted-foreground text-sm">Processing...</span>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {formatDate(dataset.uploadedAt)}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="text-chart-4 border-chart-4">
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                Ready
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-1">
+                          <>
+                            <TableRow key={dataset.id} data-testid={`row-dataset-${dataset.id}`} className="cursor-pointer hover:bg-muted/50" onClick={() => handleExpandDataset(dataset)}>
+                              <TableCell className="font-medium">
+                                <div className="flex items-center gap-2">
+                                  <FileSpreadsheet className="h-4 w-4 text-primary" />
+                                  <span className="truncate max-w-[180px]">{dataset.originalName}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="secondary">{dataset.format.toUpperCase()}</Badge>
+                              </TableCell>
+                              <TableCell className="text-sm">{formatBytes(dataset.size)}</TableCell>
+                              <TableCell className="font-medium">{dataset.rowCount.toLocaleString()}</TableCell>
+                              <TableCell className="font-medium">{dataset.columns?.length || 0}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  {dataset.qualityScore ? (
+                                    <>
+                                      <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
+                                        <div 
+                                          className={`h-full ${dataset.qualityScore >= 0.8 ? 'bg-chart-4' : dataset.qualityScore >= 0.6 ? 'bg-chart-5' : 'bg-destructive'}`}
+                                          style={{ width: `${dataset.qualityScore * 100}%` }}
+                                        />
+                                      </div>
+                                      <span className={`text-sm font-medium ${getQualityColor(dataset.qualityScore)}`}>
+                                        {(dataset.qualityScore * 100).toFixed(0)}%
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <span className="text-muted-foreground text-sm">Processing...</span>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {formatDate(dataset.uploadedAt)}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="text-chart-4 border-chart-4">
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Ready
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => handlePreview(dataset)}
-                                  data-testid={`button-preview-${dataset.id}`}
-                                  title="Preview data"
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => deleteMutation.mutate(dataset.id)}
+                                  onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(dataset.id); }}
                                   disabled={deleteMutation.isPending}
                                   data-testid={`button-delete-${dataset.id}`}
                                   title="Delete dataset"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
+                              </TableCell>
+                            </TableRow>
+                            {expandedDatasetId === dataset.id && datasetPreviews[dataset.id] && (
+                              <TableRow>
+                                <TableCell colSpan={9} className="p-0">
+                                  <div className="bg-muted/30 border-t p-6">
+                                    <h4 className="font-semibold mb-4 flex items-center gap-2">
+                                      <FileSpreadsheet className="h-4 w-4" />
+                                      Data Preview: {dataset.originalName}
+                                    </h4>
+                                    <div className="overflow-x-auto border rounded-md">
+                                      <table className="w-full text-sm">
+                                        <thead className="bg-muted">
+                                          <tr>
+                                            {datasetPreviews[dataset.id].columns.map((col: string) => (
+                                              <th key={col} className="px-4 py-2 text-left font-medium min-w-[120px]">{col}</th>
+                                            ))}
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {datasetPreviews[dataset.id].rows.slice(0, 5).map((row: any, idx: number) => (
+                                            <tr key={idx} className="border-t text-xs">
+                                              {datasetPreviews[dataset.id].columns.map((col: string) => (
+                                                <td key={col} className="px-4 py-2 font-mono">{String(row[col] ?? "")}</td>
+                                              ))}
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-3">
+                                      Showing first 5 rows of {dataset.rowCount.toLocaleString()} total rows
+                                    </p>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </>
                         ))}
                       </TableBody>
                     </Table>
@@ -429,7 +458,7 @@ export default function UploadPage() {
                 <Alert className="bg-chart-4/5">
                   <CheckCircle className="h-4 w-4 text-chart-4" />
                   <AlertDescription>
-                    <strong>{datasets.length} dataset(s)</strong> ready for risk assessment. Click preview to view columns and data samples.
+                    <strong>{datasets.length} dataset(s)</strong> ready for risk assessment. Click the row to expand and view data samples.
                   </AlertDescription>
                 </Alert>
               </div>
@@ -437,56 +466,6 @@ export default function UploadPage() {
           </CardContent>
         </Card>
       </div>
-
-      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-5xl max-h-[85vh]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileSpreadsheet className="h-5 w-5 text-primary" />
-              {selectedDataset?.originalName}
-            </DialogTitle>
-            <DialogDescription>
-              <div className="space-y-2 mt-2">
-                <p>Preview of data structure and sample records. Columns identified will be analyzed for quasi-identifiers.</p>
-                {selectedDataset && (
-                  <div className="flex flex-wrap gap-4 text-xs pt-1">
-                    <span><strong>Rows:</strong> {selectedDataset.rowCount.toLocaleString()}</span>
-                    <span><strong>Columns:</strong> {selectedDataset.columns?.length || 0}</span>
-                    <span><strong>Format:</strong> {selectedDataset.format.toUpperCase()}</span>
-                    <span><strong>Size:</strong> {formatBytes(selectedDataset.size)}</span>
-                  </div>
-                )}
-              </div>
-            </DialogDescription>
-          </DialogHeader>
-          <ScrollArea className="h-[500px] rounded-md border">
-            {previewData && (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    {previewData.columns.map((col) => (
-                      <TableHead key={col} className="min-w-[120px]">
-                        {col}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {previewData.rows.map((row, idx) => (
-                    <TableRow key={idx}>
-                      {previewData.columns.map((col) => (
-                        <TableCell key={col} className="font-mono text-sm">
-                          {String(row[col] ?? "")}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
     </DashboardLayout>
   );
 }
