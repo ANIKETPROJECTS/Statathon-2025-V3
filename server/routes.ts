@@ -99,7 +99,6 @@ export async function registerRoutes(
       let totalCells = 0;
       let filledCells = 0;
       let duplicateRows = 0;
-      let inconsistentRows = 0;
       
       // Check completeness
       data.forEach((row) => {
@@ -111,7 +110,7 @@ export async function registerRoutes(
         });
       });
 
-      // Check for duplicates
+      // Check for exact duplicate rows
       const rowSignatures = new Set<string>();
       data.forEach((row) => {
         const sig = JSON.stringify(row);
@@ -121,32 +120,60 @@ export async function registerRoutes(
         rowSignatures.add(sig);
       });
 
-      // Check for consistency (case sensitivity, spacing, etc.)
+      // Check for consistency issues (case variations, spacing, abbreviations)
       const stringColumns = columns.filter((col) => {
         return data.length > 0 && typeof data[0][col] === "string";
       });
 
-      let inconsistencyCount = 0;
+      let inconsistencyIssues = 0;
+      
       stringColumns.forEach((col) => {
-        const values = data.map((row) => String(row[col] || "").trim().toLowerCase());
-        const uniqueValues = new Set(values);
+        const values: string[] = [];
+        const valueMap = new Map<string, Set<string>>(); // Normalized -> actual values
         
-        // Check for variations (e.g., "Male", "male", "M")
         data.forEach((row) => {
           const val = String(row[col] || "").trim();
-          if (val && /[A-Z]/.test(val) && /[a-z]/.test(val)) {
-            inconsistencyCount++;
+          values.push(val);
+          
+          // Normalize: lowercase and remove extra spaces
+          const normalized = val.toLowerCase().replace(/\s+/g, " ");
+          
+          if (!valueMap.has(normalized)) {
+            valueMap.set(normalized, new Set());
           }
+          valueMap.get(normalized)!.add(val);
+        });
+
+        // Check for case/spacing variations
+        valueMap.forEach((variations) => {
+          if (variations.size > 1) {
+            // Different casings or spacings of same value
+            inconsistencyIssues += variations.size - 1;
+          }
+        });
+
+        // Check for abbreviations (e.g., "M" vs "Male")
+        const uniqueValues = new Set(values.filter(v => v));
+        uniqueValues.forEach((val1) => {
+          uniqueValues.forEach((val2) => {
+            if (val1 !== val2) {
+              // Check if one is abbreviation of the other
+              if ((val1.length < 3 && val2.startsWith(val1)) || 
+                  (val2.length < 3 && val1.startsWith(val2))) {
+                inconsistencyIssues++;
+              }
+            }
+          });
         });
       });
 
-      // Calculate individual scores
+      // Calculate individual scores (0 to 1)
       const completenessScore = totalCells > 0 ? filledCells / totalCells : 0;
-      const duplicationScore = 1 - (duplicateRows / Math.max(1, data.length));
-      const consistencyScore = 1 - (inconsistencyCount / Math.max(1, totalCells));
+      const duplicationScore = duplicateRows > 0 ? Math.max(0, 1 - (duplicateRows / data.length)) : 1.0;
+      const consistencyScore = inconsistencyIssues > 0 ? Math.max(0.1, 1 - (inconsistencyIssues / Math.max(1, totalCells))) : 1.0;
       
-      // Weighted quality score
-      const qualityScore = (completenessScore * 0.4 + duplicationScore * 0.3 + consistencyScore * 0.3);
+      // Weighted quality score (0 to 1)
+      const qualityScore = Math.max(0, Math.min(1, completenessScore * 0.4 + duplicationScore * 0.35 + consistencyScore * 0.25));
 
       const dataset = await storage.createDataset({
         userId: req.user!.id,
