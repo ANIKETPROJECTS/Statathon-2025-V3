@@ -31,6 +31,7 @@ export interface IStorage {
   getDatasets(userId: number): Promise<Dataset[]>;
   getDataset(id: number): Promise<Dataset | undefined>;
   createDataset(dataset: InsertDataset): Promise<Dataset>;
+  updateDataset(id: number, data: Partial<InsertDataset>): Promise<Dataset | undefined>;
   deleteDataset(id: number): Promise<void>;
   
   // Risk Assessments
@@ -108,6 +109,11 @@ export class DatabaseStorage implements IStorage {
   async createDataset(dataset: InsertDataset): Promise<Dataset> {
     const [result] = await db.insert(datasets).values(dataset).returning();
     return result;
+  }
+
+  async updateDataset(id: number, data: Partial<InsertDataset>): Promise<Dataset | undefined> {
+    const [result] = await db.update(datasets).set(data).where(eq(datasets.id, id)).returning();
+    return result || undefined;
   }
 
   async deleteDataset(id: number): Promise<void> {

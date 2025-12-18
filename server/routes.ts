@@ -95,10 +95,13 @@ export async function registerRoutes(
         return res.status(400).send("Unsupported file format");
       }
 
-      // Calculate quality scores
+      // Calculate comprehensive quality scores
       let totalCells = 0;
       let filledCells = 0;
+      let duplicateRows = 0;
+      let inconsistentRows = 0;
       
+      // Check completeness
       data.forEach((row) => {
         columns.forEach((col) => {
           totalCells++;
@@ -108,8 +111,42 @@ export async function registerRoutes(
         });
       });
 
+      // Check for duplicates
+      const rowSignatures = new Set<string>();
+      data.forEach((row) => {
+        const sig = JSON.stringify(row);
+        if (rowSignatures.has(sig)) {
+          duplicateRows++;
+        }
+        rowSignatures.add(sig);
+      });
+
+      // Check for consistency (case sensitivity, spacing, etc.)
+      const stringColumns = columns.filter((col) => {
+        return data.length > 0 && typeof data[0][col] === "string";
+      });
+
+      let inconsistencyCount = 0;
+      stringColumns.forEach((col) => {
+        const values = data.map((row) => String(row[col] || "").trim().toLowerCase());
+        const uniqueValues = new Set(values);
+        
+        // Check for variations (e.g., "Male", "male", "M")
+        data.forEach((row) => {
+          const val = String(row[col] || "").trim();
+          if (val && /[A-Z]/.test(val) && /[a-z]/.test(val)) {
+            inconsistencyCount++;
+          }
+        });
+      });
+
+      // Calculate individual scores
       const completenessScore = totalCells > 0 ? filledCells / totalCells : 0;
-      const qualityScore = completenessScore * 0.9 + 0.1; // Base score
+      const duplicationScore = 1 - (duplicateRows / Math.max(1, data.length));
+      const consistencyScore = 1 - (inconsistencyCount / Math.max(1, totalCells));
+      
+      // Weighted quality score
+      const qualityScore = (completenessScore * 0.4 + duplicationScore * 0.3 + consistencyScore * 0.3);
 
       const dataset = await storage.createDataset({
         userId: req.user!.id,
@@ -121,7 +158,7 @@ export async function registerRoutes(
         rowCount: data.length,
         qualityScore,
         completenessScore,
-        consistencyScore: 0.9,
+        consistencyScore: consistencyScore || 0.9,
         validityScore: 0.85,
         data,
       });
@@ -166,6 +203,131 @@ export async function registerRoutes(
       });
     } catch (error) {
       res.status(500).send("Failed to get preview");
+    }
+  });
+
+  app.post("/api/data/:id/autofix", requireAuth, async (req, res) => {
+    try {
+      const dataset = await storage.getDataset(parseInt(req.params.id));
+      if (!dataset) {
+        return res.status(404).send("Dataset not found");
+      }
+
+      let data = (dataset.data as any[]) || [];
+      const columns = dataset.columns || [];
+      const fixes: string[] = [];
+
+      // Fix 1: Remove duplicate rows
+      const uniqueRows = new Map<string, any>();
+      data.forEach((row) => {
+        const sig = JSON.stringify(row);
+        if (!uniqueRows.has(sig)) {
+          uniqueRows.set(sig, row);
+        }
+      });
+      
+      const duplicatesRemoved = data.length - uniqueRows.size;
+      if (duplicatesRemoved > 0) {
+        data = Array.from(uniqueRows.values());
+        fixes.push(`Removed ${duplicatesRemoved} duplicate records`);
+      }
+
+      // Fix 2: Normalize string values (trim, consistent casing)
+      data = data.map((row) => {
+        const fixedRow: any = {};
+        columns.forEach((col) => {
+          let value = row[col];
+          if (typeof value === "string") {
+            value = value.trim();
+            // Normalize common categorical columns
+            if (col.toLowerCase().includes("gender") || col.toLowerCase().includes("sex")) {
+              value = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+            } else if (col.toLowerCase().includes("state") || col.toLowerCase().includes("status")) {
+              value = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+            }
+          }
+          fixedRow[col] = value;
+        });
+        return fixedRow;
+      });
+      fixes.push("Normalized string formatting and spacing");
+
+      // Fix 3: Handle missing values intelligently
+      const stringColumns = columns.filter((col) => {
+        return data.length > 0 && typeof data[0][col] === "string";
+      });
+      
+      const numericColumns = columns.filter((col) => {
+        return data.length > 0 && typeof data[0][col] === "number";
+      });
+
+      // For numeric columns, fill missing with median
+      numericColumns.forEach((col) => {
+        const values = data
+          .map((row) => row[col])
+          .filter((val) => typeof val === "number");
+        
+        if (values.length > 0) {
+          values.sort((a, b) => a - b);
+          const median = values[Math.floor(values.length / 2)];
+          
+          data = data.map((row) => {
+            if (!row[col] || row[col] === "" || row[col] === null || row[col] === undefined) {
+              return { ...row, [col]: median };
+            }
+            return row;
+          });
+        }
+      });
+
+      // For string columns, fill with "Unknown"
+      stringColumns.forEach((col) => {
+        data = data.map((row) => {
+          if (!row[col] || row[col] === "" || row[col] === null || row[col] === undefined) {
+            return { ...row, [col]: "Unknown" };
+          }
+          return row;
+        });
+      });
+
+      if (fixes.length > 0) {
+        fixes.push("Filled missing values with appropriate defaults");
+      }
+
+      // Recalculate quality scores
+      let totalCells = 0;
+      let filledCells = 0;
+      
+      data.forEach((row) => {
+        columns.forEach((col) => {
+          totalCells++;
+          if (row[col] !== null && row[col] !== undefined && row[col] !== "") {
+            filledCells++;
+          }
+        });
+      });
+
+      const newCompletenessScore = totalCells > 0 ? filledCells / totalCells : 0;
+      
+      // Update dataset with fixed data
+      const updatedDataset = await storage.updateDataset(dataset.id, {
+        data,
+        qualityScore: Math.min(0.99, newCompletenessScore + 0.1),
+        completenessScore: newCompletenessScore,
+      });
+
+      await storage.createActivityLog({
+        userId: req.user!.id,
+        action: "autofix",
+        entityType: "dataset",
+        entityId: dataset.id,
+        details: { fixes },
+      });
+
+      res.json({ success: true, fixes, dataset: updatedDataset });
+    } catch (error) {
+      console.error("Auto-fix error:", error);
+      res.status(500).send("Failed to auto-fix dataset");
     }
   });
 

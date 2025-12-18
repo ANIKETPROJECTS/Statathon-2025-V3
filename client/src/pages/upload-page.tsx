@@ -517,9 +517,9 @@ export default function UploadPage() {
                                         <p className="text-sm font-medium text-muted-foreground">Completeness</p>
                                         <div className="flex items-center gap-2 mt-2">
                                           <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
-                                            <div className="h-full bg-chart-4" style={{ width: '92%' }} />
+                                            <div className="h-full bg-chart-4" style={{ width: `${(dataset.completenessScore || 0) * 100}%` }} />
                                           </div>
-                                          <span className="text-lg font-bold">92%</span>
+                                          <span className="text-lg font-bold">{dataset.completenessScore ? (dataset.completenessScore * 100).toFixed(0) : '0'}%</span>
                                         </div>
                                       </div>
 
