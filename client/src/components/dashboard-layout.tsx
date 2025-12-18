@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import React, { ReactNode } from "react";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -41,16 +41,16 @@ export function DashboardLayout({ children, title, breadcrumbs = [] }: Dashboard
                   <BreadcrumbLink href="/">Home</BreadcrumbLink>
                 </BreadcrumbItem>
                 {breadcrumbs.map((crumb, index) => (
-                  <>
-                    <BreadcrumbSeparator key={`sep-${index}`} />
-                    <BreadcrumbItem key={`item-${index}`}>
+                  <React.Fragment key={`crumb-${index}`}>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
                       {crumb.href ? (
                         <BreadcrumbLink href={crumb.href}>{crumb.label}</BreadcrumbLink>
                       ) : (
                         <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
                       )}
                     </BreadcrumbItem>
-                  </>
+                  </React.Fragment>
                 ))}
               </BreadcrumbList>
             </Breadcrumb>
