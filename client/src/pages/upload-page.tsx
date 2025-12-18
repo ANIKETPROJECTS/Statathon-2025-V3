@@ -189,11 +189,37 @@ export default function UploadPage() {
           ...prev,
           [datasetId]: result.fixes || ["Data cleaning completed"],
         }));
+        
+        // Clear preview cache to force reload of fixed data
+        setDatasetPreviews((prev) => {
+          const updated = { ...prev };
+          delete updated[datasetId];
+          return updated;
+        });
+        
         queryClient.invalidateQueries({ queryKey: ["/api/datasets"] });
         toast({
           title: "Auto Fix completed",
           description: "Dataset has been automatically repaired.",
         });
+        
+        // Reload preview with fixed data
+        setTimeout(async () => {
+          try {
+            const previewResponse = await fetch(`/api/data/${datasetId}/preview`, {
+              credentials: "include",
+            });
+            if (previewResponse.ok) {
+              const previewData = await previewResponse.json();
+              setDatasetPreviews((prev) => ({
+                ...prev,
+                [datasetId]: previewData,
+              }));
+            }
+          } catch (error) {
+            console.error("Failed to reload preview:", error);
+          }
+        }, 500);
       }
     } catch (error) {
       toast({
