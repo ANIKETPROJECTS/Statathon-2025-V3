@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Table,
   TableBody,
@@ -26,6 +27,11 @@ import {
   Loader2,
   FileText,
   X,
+  Info,
+  Database,
+  Users,
+  Shield,
+  TrendingUp,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -176,11 +182,82 @@ export default function UploadPage() {
   return (
     <DashboardLayout title="Data Upload" breadcrumbs={[{ label: "Data Upload" }]}>
       <div className="space-y-6">
+        {/* Guidelines Section */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Database className="h-4 w-4 text-primary" />
+                File Requirements
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground space-y-1">
+              <p>✓ CSV, XLSX, XLS, JSON</p>
+              <p>✓ Max file size: 100 MB</p>
+              <p>✓ Min 10 rows recommended</p>
+              <p>✓ Headers required</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Shield className="h-4 w-4 text-primary" />
+                Quasi-Identifiers
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground space-y-1">
+              <p>Age, Gender, Postal Code</p>
+              <p>State, Occupation</p>
+              <p>Education Level, Salary</p>
+              <p className="text-xs">Can re-identify when combined</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Users className="h-4 w-4 text-primary" />
+                Direct Identifiers
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground space-y-1">
+              <p>✓ Remove: Name, ID, Email</p>
+              <p>✓ Remove: Phone, Address</p>
+              <p>✓ Keep: Anonymized ID only</p>
+              <p className="text-xs">Already removed by NSO</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                Data Quality
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground space-y-1">
+              <p>✓ Minimize missing values</p>
+              <p>✓ Check for outliers</p>
+              <p>✓ Consistent formatting</p>
+              <p>✓ Valid data types</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Upload Instructions */}
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Upload Process:</strong> Your NSO microdata file will be automatically analyzed to identify quasi-identifiers, assess re-identification risk, and prepare for privacy enhancement.
+          </AlertDescription>
+        </Alert>
+
         <Card>
           <CardHeader>
-            <CardTitle>Upload Dataset</CardTitle>
+            <CardTitle>Upload Microdata File</CardTitle>
             <CardDescription>
-              Drag and drop a file or click to browse. Supports CSV, XLSX, XLS, and JSON formats.
+              Drag and drop your NSO microdata file (with quasi-identifiers intact for risk assessment). Supports CSV, XLSX, XLS, and JSON formats.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -239,9 +316,9 @@ export default function UploadPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Uploaded Datasets</CardTitle>
+            <CardTitle>Your Uploaded Datasets</CardTitle>
             <CardDescription>
-              Manage your uploaded datasets and view data quality metrics
+              All uploaded microdata files are listed below. Preview column structure, assess data quality, and proceed to risk assessment.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -254,87 +331,107 @@ export default function UploadPage() {
             ) : !datasets?.length ? (
               <div className="text-center py-12">
                 <FileSpreadsheet className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No datasets uploaded yet</p>
+                <p className="text-muted-foreground font-medium">No datasets uploaded yet</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Upload your first dataset to get started
+                  Upload your first NSO microdata file using the dropzone above to begin privacy assessment
                 </p>
               </div>
             ) : (
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>File Name</TableHead>
-                      <TableHead>Format</TableHead>
-                      <TableHead>Size</TableHead>
-                      <TableHead>Rows</TableHead>
-                      <TableHead>Columns</TableHead>
-                      <TableHead>Quality Score</TableHead>
-                      <TableHead>Uploaded</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {datasets.map((dataset) => (
-                      <TableRow key={dataset.id} data-testid={`row-dataset-${dataset.id}`}>
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-muted-foreground" />
-                            <span className="truncate max-w-[200px]">{dataset.originalName}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{dataset.format.toUpperCase()}</Badge>
-                        </TableCell>
-                        <TableCell>{formatBytes(dataset.size)}</TableCell>
-                        <TableCell>{dataset.rowCount.toLocaleString()}</TableCell>
-                        <TableCell>{dataset.columns?.length || 0}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {dataset.qualityScore ? (
-                              <>
-                                <span className={`font-medium ${getQualityColor(dataset.qualityScore)}`}>
-                                  {(dataset.qualityScore * 100).toFixed(0)}%
-                                </span>
-                                {dataset.qualityScore >= 0.8 ? (
-                                  <CheckCircle className="h-4 w-4 text-chart-4" />
+              <div className="space-y-4">
+                <div className="rounded-lg border overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead>File Name</TableHead>
+                          <TableHead>Format</TableHead>
+                          <TableHead>Size</TableHead>
+                          <TableHead>Rows</TableHead>
+                          <TableHead>Columns</TableHead>
+                          <TableHead>Data Quality</TableHead>
+                          <TableHead>Upload Date</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {datasets.map((dataset) => (
+                          <TableRow key={dataset.id} data-testid={`row-dataset-${dataset.id}`}>
+                            <TableCell className="font-medium">
+                              <div className="flex items-center gap-2">
+                                <FileSpreadsheet className="h-4 w-4 text-primary" />
+                                <span className="truncate max-w-[180px]">{dataset.originalName}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary">{dataset.format.toUpperCase()}</Badge>
+                            </TableCell>
+                            <TableCell className="text-sm">{formatBytes(dataset.size)}</TableCell>
+                            <TableCell className="font-medium">{dataset.rowCount.toLocaleString()}</TableCell>
+                            <TableCell className="font-medium">{dataset.columns?.length || 0}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {dataset.qualityScore ? (
+                                  <>
+                                    <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
+                                      <div 
+                                        className={`h-full ${dataset.qualityScore >= 0.8 ? 'bg-chart-4' : dataset.qualityScore >= 0.6 ? 'bg-chart-5' : 'bg-destructive'}`}
+                                        style={{ width: `${dataset.qualityScore * 100}%` }}
+                                      />
+                                    </div>
+                                    <span className={`text-sm font-medium ${getQualityColor(dataset.qualityScore)}`}>
+                                      {(dataset.qualityScore * 100).toFixed(0)}%
+                                    </span>
+                                  </>
                                 ) : (
-                                  <AlertCircle className="h-4 w-4 text-chart-5" />
+                                  <span className="text-muted-foreground text-sm">Processing...</span>
                                 )}
-                              </>
-                            ) : (
-                              <span className="text-muted-foreground">N/A</span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-sm">
-                          {formatDate(dataset.uploadedAt)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handlePreview(dataset)}
-                              data-testid={`button-preview-${dataset.id}`}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => deleteMutation.mutate(dataset.id)}
-                              disabled={deleteMutation.isPending}
-                              data-testid={`button-delete-${dataset.id}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {formatDate(dataset.uploadedAt)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-chart-4 border-chart-4">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Ready
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handlePreview(dataset)}
+                                  data-testid={`button-preview-${dataset.id}`}
+                                  title="Preview data"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => deleteMutation.mutate(dataset.id)}
+                                  disabled={deleteMutation.isPending}
+                                  data-testid={`button-delete-${dataset.id}`}
+                                  title="Delete dataset"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+                <Alert className="bg-chart-4/5">
+                  <CheckCircle className="h-4 w-4 text-chart-4" />
+                  <AlertDescription>
+                    <strong>{datasets.length} dataset(s)</strong> ready for risk assessment. Click preview to view columns and data samples.
+                  </AlertDescription>
+                </Alert>
               </div>
             )}
           </CardContent>
@@ -342,14 +439,24 @@ export default function UploadPage() {
       </div>
 
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh]">
+        <DialogContent className="max-w-5xl max-h-[85vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileSpreadsheet className="h-5 w-5" />
+              <FileSpreadsheet className="h-5 w-5 text-primary" />
               {selectedDataset?.originalName}
             </DialogTitle>
             <DialogDescription>
-              Preview of the first 100 rows
+              <div className="space-y-2 mt-2">
+                <p>Preview of data structure and sample records. Columns identified will be analyzed for quasi-identifiers.</p>
+                {selectedDataset && (
+                  <div className="flex flex-wrap gap-4 text-xs pt-1">
+                    <span><strong>Rows:</strong> {selectedDataset.rowCount.toLocaleString()}</span>
+                    <span><strong>Columns:</strong> {selectedDataset.columns?.length || 0}</span>
+                    <span><strong>Format:</strong> {selectedDataset.format.toUpperCase()}</span>
+                    <span><strong>Size:</strong> {formatBytes(selectedDataset.size)}</span>
+                  </div>
+                )}
+              </div>
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="h-[500px] rounded-md border">
