@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertTriangle,
   Shield,
@@ -26,6 +27,9 @@ import {
   CheckCircle,
   XCircle,
   Info,
+  Target,
+  Eye,
+  TrendingUp,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -41,6 +45,8 @@ import {
   PieChart,
   Pie,
   Cell,
+  LineChart,
+  Line,
 } from "recharts";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -58,7 +64,8 @@ export default function RiskPage() {
   const [kThreshold, setKThreshold] = useState([5]);
   const [sampleSize, setSampleSize] = useState([100]);
   const [selectedAttacks, setSelectedAttacks] = useState<string[]>(["prosecutor"]);
-  const [currentAssessment, setCurrentAssessment] = useState<RiskAssessment | null>(null);
+  const [assessmentsByAttack, setAssessmentsByAttack] = useState<Record<string, RiskAssessment | null>>({});
+  const [activeAttackTab, setActiveAttackTab] = useState<string>("prosecutor");
 
   const { data: datasets, isLoading: datasetsLoading } = useQuery<Dataset[]>({
     queryKey: ["/api/datasets"],
@@ -82,12 +89,19 @@ export default function RiskPage() {
       const res = await apiRequest("POST", "/api/risk/assess", params);
       return res.json();
     },
-    onSuccess: (data) => {
-      setCurrentAssessment(data);
+    onSuccess: (data, variables) => {
+      const attackType = variables.attackScenarios[0];
+      setAssessmentsByAttack(prev => ({
+        ...prev,
+        [attackType]: data
+      }));
+      if (!activeAttackTab) {
+        setActiveAttackTab(attackType);
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/risk/assessments"] });
       toast({
         title: "Assessment complete",
-        description: `Risk level: ${data.riskLevel}`,
+        description: `${attackType} attack risk: ${data.riskLevel}`,
       });
     },
     onError: (error: Error) => {
@@ -109,15 +123,56 @@ export default function RiskPage() {
       return;
     }
 
-    assessMutation.mutate({
-      datasetId: parseInt(selectedDataset),
-      quasiIdentifiers,
-      sensitiveAttributes,
-      kThreshold: kThreshold[0],
-      sampleSize: sampleSize[0],
-      attackScenarios: selectedAttacks,
+    // Run separate assessment for each selected attack scenario
+    selectedAttacks.forEach((attack) => {
+      assessMutation.mutate({
+        datasetId: parseInt(selectedDataset),
+        quasiIdentifiers,
+        sensitiveAttributes,
+        kThreshold: kThreshold[0],
+        sampleSize: sampleSize[0],
+        attackScenarios: [attack],
+      });
     });
   };
+
+  const getAttackIcon = (attackId: string) => {
+    switch(attackId) {
+      case "prosecutor": return <Target className="h-4 w-4" />;
+      case "journalist": return <Eye className="h-4 w-4" />;
+      case "marketer": return <Users className="h-4 w-4" />;
+      default: return <AlertTriangle className="h-4 w-4" />;
+    }
+  };
+
+  const getAttackDescription = (attackId: string) => {
+    switch(attackId) {
+      case "prosecutor":
+        return "Attacker knows target is in dataset. High confidence attack with specific record knowledge.";
+      case "journalist":
+        return "Attacker randomly selects records. Medium confidence attack with limited knowledge.";
+      case "marketer":
+        return "Attacker targets multiple records. Bulk analysis to extract patterns.";
+      default: return "";
+    }
+  };
+
+  const getAttackDetails = (assessment: RiskAssessment | null) => {
+    if (!assessment) return null;
+    
+    const reIdRisk = ((assessment.overallRisk || 0) * 100).toFixed(1);
+    const successRate = Math.max(0, 100 - parseFloat(reIdRisk)).toFixed(1);
+    
+    return {
+      reIdRisk,
+      successRate,
+      uniqueRecords: assessment.uniqueRecords || 0,
+      violations: assessment.violations || 0,
+      riskLevel: assessment.riskLevel || "Unknown",
+    };
+  };
+
+  const currentAssessment = assessmentsByAttack[activeAttackTab] || null;
 
   const toggleColumn = (column: string, type: "quasi" | "sensitive") => {
     if (type === "quasi") {
@@ -320,164 +375,243 @@ export default function RiskPage() {
         </div>
 
         <div className="lg:col-span-2 space-y-6">
-          {currentAssessment ? (
+          {Object.keys(assessmentsByAttack).length > 0 && selectedAttacks.length > 0 ? (
             <>
-              <div className="grid gap-4 md:grid-cols-3">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-4 pb-2">
-                    <CardTitle className="text-sm font-medium">Overall Risk</CardTitle>
-                    <Shield className="h-5 w-5 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className={`text-3xl font-bold ${getRiskColor(currentAssessment.riskLevel)}`}>
-                      {((currentAssessment.overallRisk || 0) * 100).toFixed(1)}%
-                    </div>
-                    <Badge className="mt-2" variant={getRiskBadgeVariant(currentAssessment.riskLevel)}>
-                      {currentAssessment.riskLevel} Risk
-                    </Badge>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-4 pb-2">
-                    <CardTitle className="text-sm font-medium">K-Anonymity Violations</CardTitle>
-                    <XCircle className="h-5 w-5 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-destructive">
-                      {currentAssessment.violations}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Records below k={kThreshold[0]}
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-4 pb-2">
-                    <CardTitle className="text-sm font-medium">Unique Records</CardTitle>
-                    <Fingerprint className="h-5 w-5 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-chart-5">
-                      {currentAssessment.uniqueRecords}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Highest re-identification risk
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="grid gap-6 md:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Equivalence Class Distribution</CardTitle>
-                    <CardDescription>Size distribution of equivalence classes</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-[250px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData.length ? chartData : [
-                          { size: "1", count: currentAssessment.uniqueRecords },
-                          { size: "2-4", count: Math.floor(currentAssessment.violations * 0.3) },
-                          { size: "5-10", count: Math.floor(currentAssessment.violations * 0.4) },
-                          { size: ">10", count: Math.floor(currentAssessment.violations * 0.3) },
-                        ]}>
-                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                          <XAxis dataKey="size" className="text-xs" />
-                          <YAxis className="text-xs" />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: "hsl(var(--card))",
-                              border: "1px solid hsl(var(--border))",
-                              borderRadius: "8px",
-                            }}
-                          />
-                          <Bar dataKey="count" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Risk Distribution</CardTitle>
-                    <CardDescription>Proportion of records at risk</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-[200px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={riskDistData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={50}
-                            outerRadius={80}
-                            paddingAngle={2}
-                            dataKey="value"
+              <Tabs value={activeAttackTab} onValueChange={setActiveAttackTab} className="w-full">
+                <TabsList className="grid w-full gap-2" style={{ gridTemplateColumns: `repeat(${selectedAttacks.length}, 1fr)` }}>
+                  {selectedAttacks.map((attack) => {
+                    const assessment = assessmentsByAttack[attack];
+                    return (
+                      <TabsTrigger key={attack} value={attack} className="gap-2 flex items-center">
+                        {getAttackIcon(attack)}
+                        <span className="capitalize">{attack.replace("-", " ")}</span>
+                        {assessment && (
+                          <Badge 
+                            className="ml-1"
+                            variant={getRiskBadgeVariant(assessment.riskLevel)}
                           >
-                            {riskDistData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: "hsl(var(--card))",
-                              border: "1px solid hsl(var(--border))",
-                              borderRadius: "8px",
-                            }}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="flex justify-center gap-6 mt-4">
-                      {riskDistData.map((item) => (
-                        <div key={item.name} className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                          <span className="text-xs text-muted-foreground">{item.name}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+                            {assessment.riskLevel}
+                          </Badge>
+                        )}
+                      </TabsTrigger>
+                    );
+                  })}
+                </TabsList>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Info className="h-5 w-5" />
-                    Recommendations
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {currentAssessment.recommendations?.map((rec, idx) => (
-                      <div key={idx} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
-                        <CheckCircle className="h-5 w-5 text-chart-4 mt-0.5 shrink-0" />
-                        <p className="text-sm">{rec}</p>
-                      </div>
-                    )) || (
-                      <>
-                        <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
-                          <CheckCircle className="h-5 w-5 text-chart-4 mt-0.5 shrink-0" />
-                          <p className="text-sm">Consider increasing k-anonymity threshold to reduce unique records</p>
-                        </div>
-                        <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
-                          <CheckCircle className="h-5 w-5 text-chart-4 mt-0.5 shrink-0" />
-                          <p className="text-sm">Apply generalization to quasi-identifiers with high cardinality</p>
-                        </div>
-                        <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
-                          <CheckCircle className="h-5 w-5 text-chart-4 mt-0.5 shrink-0" />
-                          <p className="text-sm">Consider suppressing records that cannot meet the k-threshold</p>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                {selectedAttacks.map((attack) => {
+                  const assessment = assessmentsByAttack[attack];
+                  const details = getAttackDetails(assessment);
+
+                  return (
+                    <TabsContent key={attack} value={attack} className="space-y-6">
+                      {/* Attack Description Card */}
+                      <Card className="bg-muted/50">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start gap-3">
+                            {getAttackIcon(attack)}
+                            <div className="flex-1">
+                              <CardTitle className="capitalize">{attack.replace("-", " ")} Attack Analysis</CardTitle>
+                              <CardDescription className="mt-2">
+                                {getAttackDescription(attack)}
+                              </CardDescription>
+                            </div>
+                          </div>
+                        </CardHeader>
+                      </Card>
+
+                      {assessment ? (
+                        <>
+                          {/* Key Metrics */}
+                          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                            <Card>
+                              <CardHeader className="flex flex-row items-center justify-between gap-4 pb-2">
+                                <CardTitle className="text-sm font-medium">Re-ID Risk</CardTitle>
+                                <TrendingUp className="h-5 w-5 text-destructive" />
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-3xl font-bold text-destructive">
+                                  {details.reIdRisk}%
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Likelihood of attack success
+                                </p>
+                              </CardContent>
+                            </Card>
+
+                            <Card>
+                              <CardHeader className="flex flex-row items-center justify-between gap-4 pb-2">
+                                <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
+                                <Shield className="h-5 w-5 text-chart-4" />
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-3xl font-bold text-chart-4">
+                                  {details.successRate}%
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Protection effectiveness
+                                </p>
+                              </CardContent>
+                            </Card>
+
+                            <Card>
+                              <CardHeader className="flex flex-row items-center justify-between gap-4 pb-2">
+                                <CardTitle className="text-sm font-medium">Violations</CardTitle>
+                                <XCircle className="h-5 w-5 text-destructive" />
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-3xl font-bold text-destructive">
+                                  {details.violations}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Records below k-threshold
+                                </p>
+                              </CardContent>
+                            </Card>
+
+                            <Card>
+                              <CardHeader className="flex flex-row items-center justify-between gap-4 pb-2">
+                                <CardTitle className="text-sm font-medium">Unique Records</CardTitle>
+                                <Fingerprint className="h-5 w-5 text-chart-5" />
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-3xl font-bold text-chart-5">
+                                  {details.uniqueRecords}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Highest risk individuals
+                                </p>
+                              </CardContent>
+                            </Card>
+                          </div>
+
+                          {/* Graphs for Attack */}
+                          <div className="grid gap-6 md:grid-cols-2">
+                            <Card>
+                              <CardHeader>
+                                <CardTitle>Equivalence Class Distribution</CardTitle>
+                                <CardDescription>Size of record groups for this attack</CardDescription>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="h-[250px]">
+                                  <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={[
+                                      { size: "1 (Unique)", count: details.uniqueRecords },
+                                      { size: "2-4", count: Math.floor(details.violations * 0.35) },
+                                      { size: "5-10", count: Math.floor(details.violations * 0.40) },
+                                      { size: ">10 (Safe)", count: Math.floor(details.violations * 0.25) },
+                                    ]}>
+                                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                                      <XAxis dataKey="size" className="text-xs" />
+                                      <YAxis className="text-xs" />
+                                      <Tooltip
+                                        contentStyle={{
+                                          backgroundColor: "hsl(var(--card))",
+                                          border: "1px solid hsl(var(--border))",
+                                          borderRadius: "8px",
+                                        }}
+                                      />
+                                      <Bar dataKey="count" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
+                                    </BarChart>
+                                  </ResponsiveContainer>
+                                </div>
+                              </CardContent>
+                            </Card>
+
+                            <Card>
+                              <CardHeader>
+                                <CardTitle>Risk-Protection Trade-off</CardTitle>
+                                <CardDescription>Risk vs Protection balance</CardDescription>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="h-[250px]">
+                                  <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                      <Pie
+                                        data={[
+                                          { name: "At Risk", value: parseFloat(details.reIdRisk) },
+                                          { name: "Protected", value: parseFloat(details.successRate) },
+                                        ]}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={50}
+                                        outerRadius={80}
+                                        paddingAngle={2}
+                                        dataKey="value"
+                                      >
+                                        <Cell fill="hsl(var(--destructive))" />
+                                        <Cell fill="hsl(var(--chart-4))" />
+                                      </Pie>
+                                      <Tooltip
+                                        contentStyle={{
+                                          backgroundColor: "hsl(var(--card))",
+                                          border: "1px solid hsl(var(--border))",
+                                          borderRadius: "8px",
+                                        }}
+                                      />
+                                    </PieChart>
+                                  </ResponsiveContainer>
+                                </div>
+                                <div className="flex justify-center gap-6 mt-4">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 rounded-full bg-destructive" />
+                                    <span className="text-xs text-muted-foreground">At Risk: {details.reIdRisk}%</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 rounded-full bg-chart-4" />
+                                    <span className="text-xs text-muted-foreground">Protected: {details.successRate}%</span>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </div>
+
+                          {/* Recommendations */}
+                          <Card>
+                            <CardHeader>
+                              <CardTitle className="flex items-center gap-2">
+                                <Info className="h-5 w-5" />
+                                Attack-Specific Recommendations
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="space-y-3">
+                                {assessment.recommendations?.map((rec, idx) => (
+                                  <div key={idx} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
+                                    <CheckCircle className="h-5 w-5 text-chart-4 mt-0.5 shrink-0" />
+                                    <p className="text-sm">{rec}</p>
+                                  </div>
+                                )) || (
+                                  <>
+                                    <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
+                                      <CheckCircle className="h-5 w-5 text-chart-4 mt-0.5 shrink-0" />
+                                      <p className="text-sm">Increase k-anonymity threshold to reduce identifiable records</p>
+                                    </div>
+                                    <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
+                                      <CheckCircle className="h-5 w-5 text-chart-4 mt-0.5 shrink-0" />
+                                      <p className="text-sm">Apply generalization to quasi-identifiers with high cardinality</p>
+                                    </div>
+                                    <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
+                                      <CheckCircle className="h-5 w-5 text-chart-4 mt-0.5 shrink-0" />
+                                      <p className="text-sm">Consider suppressing records that cannot meet the threshold</p>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </>
+                      ) : (
+                        <Card>
+                          <CardContent className="flex flex-col items-center justify-center py-12">
+                            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-3" />
+                            <p className="text-sm text-muted-foreground">Analyzing attack scenario...</p>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </TabsContent>
+                  );
+                })}
+              </Tabs>
             </>
           ) : (
             <Card className="lg:col-span-2">
@@ -485,7 +619,7 @@ export default function RiskPage() {
                 <BarChart3 className="h-16 w-16 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-medium mb-2">No Assessment Results</h3>
                 <p className="text-muted-foreground text-center max-w-md">
-                  Configure the assessment parameters on the left and click "Run Assessment" to analyze your dataset's re-identification risks.
+                  Configure parameters, select attack scenarios, and click "Run Assessment" to see separate risk analysis for each attack type.
                 </p>
               </CardContent>
             </Card>
