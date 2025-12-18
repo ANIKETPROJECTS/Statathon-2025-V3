@@ -16,41 +16,83 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-// Helper: Standardize string values in a dataset
+// Helper: Standardize string values with abbreviation handling
 function standardizeStringValues(data: any[], columns: string[]): { data: any[], fixes: string[] } {
   const fixes: string[] = [];
   const stringColumns = columns.filter((col) => {
     return data.length > 0 && typeof data[0][col] === "string";
   });
 
+  // Common mappings for known fields
+  const knownMappings: Record<string, Record<string, string>> = {
+    gender: {
+      "m": "Male", "male": "Male", "M": "Male",
+      "f": "Female", "female": "Female", "F": "Female",
+      "o": "Other", "other": "Other", "O": "Other",
+    },
+    sex: {
+      "m": "Male", "male": "Male", "M": "Male",
+      "f": "Female", "female": "Female", "F": "Female",
+    },
+    status: {
+      "s": "Single", "single": "Single", "S": "Single",
+      "m": "Married", "married": "Married", "M": "Married",
+      "d": "Divorced", "divorced": "Divorced", "D": "Divorced",
+      "w": "Widowed", "widowed": "Widowed", "W": "Widowed",
+    },
+    "marital_status": {
+      "s": "Single", "single": "Single", "S": "Single",
+      "m": "Married", "married": "Married", "M": "Married",
+      "d": "Divorced", "divorced": "Divorced", "D": "Divorced",
+      "w": "Widowed", "widowed": "Widowed", "W": "Widowed",
+    },
+  };
+
   const canonicalMaps = new Map<string, Map<string, string>>();
   
   stringColumns.forEach((col) => {
+    const colLower = col.toLowerCase();
+    const knownMapping = Object.entries(knownMappings).find(([key]) => colLower.includes(key))?.[1];
+    
     const valueMap = new Map<string, Set<string>>();
+    const canonicalMap = new Map<string, string>();
     
     data.forEach((row) => {
       const val = String(row[col] || "").trim();
-      const normalized = val.toLowerCase().replace(/\s+/g, " ");
+      let canonical = val;
+
+      // Use known mapping if available
+      if (knownMapping) {
+        canonical = knownMapping[val.toLowerCase()] || val;
+      } else {
+        // Normalize to Title Case
+        canonical = val
+          .toLowerCase()
+          .split(/\s+/)
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(" ");
+      }
+
+      canonicalMap.set(val, canonical);
       
+      const normalized = canonical.toLowerCase();
       if (!valueMap.has(normalized)) {
         valueMap.set(normalized, new Set());
       }
-      valueMap.get(normalized)!.add(val);
+      valueMap.get(normalized)!.add(canonical);
     });
 
-    const canonicalMap = new Map<string, string>();
     let hasVariations = false;
-    
-    valueMap.forEach((variations, normalized) => {
-      const canonical = Array.from(variations)[0];
-      variations.forEach((variation) => {
-        canonicalMap.set(variation, canonical);
-        if (variation !== canonical) hasVariations = true;
-      });
+    data.forEach((row) => {
+      const val = String(row[col] || "").trim();
+      const mapped = canonicalMap.get(val);
+      if (mapped && val !== mapped) {
+        hasVariations = true;
+      }
     });
-    
+
     if (hasVariations) {
-      fixes.push(`Standardized ${col}: ${valueMap.size} unique values normalized to consistent casing`);
+      fixes.push(`Standardized ${col}: normalized ${Array.from(new Set(data.map((r) => String(r[col] || "").trim()))).length} variations to consistent format`);
       canonicalMaps.set(col, canonicalMap);
     }
   });
