@@ -118,9 +118,9 @@ export default function ReportsPage() {
       title: reportTitle,
       type: reportType,
       format: reportFormat,
-      datasetId: selectedDataset ? parseInt(selectedDataset) : null,
-      riskAssessmentId: selectedAssessment ? parseInt(selectedAssessment) : null,
-      utilityMeasurementId: selectedUtility ? parseInt(selectedUtility) : null,
+      datasetId: selectedDataset && selectedDataset !== "none" ? parseInt(selectedDataset) : null,
+      riskAssessmentId: selectedAssessment && selectedAssessment !== "none" ? parseInt(selectedAssessment) : null,
+      utilityMeasurementId: selectedUtility && selectedUtility !== "none" ? parseInt(selectedUtility) : null,
     });
   };
 
@@ -226,7 +226,7 @@ export default function ReportsPage() {
                     <SelectValue placeholder="Select dataset" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {datasets?.map((d) => (
                       <SelectItem key={d.id} value={d.id.toString()}>
                         {d.originalName}
@@ -243,7 +243,7 @@ export default function ReportsPage() {
                     <SelectValue placeholder="Select assessment" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {assessments?.map((a) => (
                       <SelectItem key={a.id} value={a.id.toString()}>
                         Assessment #{a.id} - {a.riskLevel}
@@ -260,7 +260,7 @@ export default function ReportsPage() {
                     <SelectValue placeholder="Select measurement" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {utilities?.map((u) => (
                       <SelectItem key={u.id} value={u.id.toString()}>
                         Measurement #{u.id} - {u.utilityLevel}
