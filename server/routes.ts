@@ -7,6 +7,7 @@ import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { v4 as uuidv4 } from "uuid";
 import { calculateRiskMetrics, getRiskLevel } from "./risk-utils";
+import { applyLDiversityDistinct, applyTCloseness } from "./privacy-utils";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -654,22 +655,27 @@ export async function registerRoutes(
       }
 
       const data = dataset.data as any[];
-      // Simplified l-diversity implementation
-      const processedData = data.map((row) => ({ ...row }));
+      const { processedData, recordsSuppressed, informationLoss } = applyLDiversityDistinct(
+        data,
+        quasiIdentifiers,
+        sensitiveAttribute,
+        lValue
+      );
 
       const operation = await storage.createPrivacyOperation({
         datasetId,
         userId: req.user!.id,
         technique: "l-diversity",
-        method,
+        method: method || "distinct",
         parameters: { lValue, sensitiveAttribute, quasiIdentifiers },
         processedData,
-        recordsSuppressed: 0,
-        informationLoss: 0.15,
+        recordsSuppressed,
+        informationLoss,
       });
 
       res.json(operation);
     } catch (error) {
+      console.error("L-diversity error:", error);
       res.status(500).send("Failed to apply l-diversity");
     }
   });
@@ -684,7 +690,12 @@ export async function registerRoutes(
       }
 
       const data = dataset.data as any[];
-      const processedData = data.map((row) => ({ ...row }));
+      const { processedData, recordsSuppressed, informationLoss } = applyTCloseness(
+        data,
+        quasiIdentifiers,
+        sensitiveAttribute,
+        tValue
+      );
 
       const operation = await storage.createPrivacyOperation({
         datasetId,
@@ -693,12 +704,13 @@ export async function registerRoutes(
         method: "emd",
         parameters: { tValue, sensitiveAttribute, quasiIdentifiers },
         processedData,
-        recordsSuppressed: 0,
-        informationLoss: 0.12,
+        recordsSuppressed,
+        informationLoss,
       });
 
       res.json(operation);
     } catch (error) {
+      console.error("T-closeness error:", error);
       res.status(500).send("Failed to apply t-closeness");
     }
   });
