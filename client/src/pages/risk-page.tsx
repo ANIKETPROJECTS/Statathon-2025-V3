@@ -161,7 +161,9 @@ export default function RiskPage() {
     if (!assessment) return null;
     
     const reIdRisk = ((assessment.overallRisk || 0) * 100).toFixed(1);
-    const successRate = Math.max(0, 100 - parseFloat(reIdRisk)).toFixed(1);
+    // Success Rate = Re-ID Risk (probability of successful attack)
+    // Not the inverse - higher risk means higher attack success
+    const successRate = reIdRisk;
     
     return {
       reIdRisk,

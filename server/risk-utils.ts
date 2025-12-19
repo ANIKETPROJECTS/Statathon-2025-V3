@@ -85,6 +85,8 @@ function pitmanPopulationEstimate(
  * JOURNALIST ATTACK: Attacker does NOT know if target is in dataset
  * Risk = (sample equivalence class size) / (population equivalence class size)
  * Uses Pitman model to estimate population sizes
+ * 
+ * IMPORTANT: Any group smaller than k=2 is considered a violation and contributes significantly to risk
  */
 function calculateJournalistRisk(
   equivalenceClasses: EquivalenceClass[],
@@ -98,6 +100,9 @@ function calculateJournalistRisk(
   const totalRecords = equivalenceClasses.reduce((sum, ec) => sum + ec.size, 0);
   const sampleUniques = equivalenceClasses.filter((ec) => ec.size === 1).length;
 
+  // Count k-anonymity violations (groups with size < 2)
+  const kViolations = equivalenceClasses.filter((ec) => ec.size < 2).length;
+
   // Estimate population uniques using Pitman model
   const estimatedPopulationUniques = pitmanPopulationEstimate(
     sampleUniques,
@@ -110,16 +115,22 @@ function calculateJournalistRisk(
   let sampleRecordsAtRisk = 0;
 
   equivalenceClasses.forEach((ec) => {
-    // For each sample group, estimate population group size
-    // Using Pitman: estimated_pop_group = sample_group * (population/sample)
-    const sampleProportion = ec.size / totalRecords;
-    const estimatedPopGroupSize = Math.max(
-      1,
-      Math.round(sampleProportion * populationSize)
-    );
-
-    // Journalist risk for this group
-    const risk = Math.min(1.0, ec.size / estimatedPopGroupSize);
+    // For groups that violate k-anonymity, risk is proportionally higher
+    let risk: number;
+    
+    if (ec.size === 1) {
+      // Unique records: high risk for journalist attack (50% risk)
+      risk = 0.5;
+    } else {
+      // For non-unique small groups, calculate based on population estimate
+      const sampleProportion = ec.size / totalRecords;
+      const estimatedPopGroupSize = Math.max(
+        1,
+        Math.round(sampleProportion * populationSize)
+      );
+      risk = Math.min(1.0, ec.size / estimatedPopGroupSize);
+    }
+    
     perClassRisks.push(risk);
 
     // Weight by sample group size
@@ -131,11 +142,14 @@ function calculateJournalistRisk(
     }
   });
 
-  const overallRisk =
+  // Add penalty for k-anonymity violations
+  const violationPenalty = Math.min(0.3, (kViolations / totalRecords) * 0.5);
+  let overallRisk =
     totalRecords > 0 ? totalJournalistRisk / totalRecords : 0;
+  overallRisk = Math.min(1.0, overallRisk + violationPenalty);
 
   return {
-    overall: Math.min(overallRisk, 1.0),
+    overall: overallRisk,
     perClass: perClassRisks,
     sampleRecordsAtRisk,
   };
@@ -146,6 +160,8 @@ function calculateJournalistRisk(
  * Goal: Re-identify many records (some errors acceptable)
  * Risk = Average of (sample_group / population_group) across all records
  * Similar to Journalist but focuses on average re-identification probability
+ * 
+ * IMPORTANT: Groups violating k-anonymity have higher risk for mass targeting
  */
 function calculateMarketerRisk(
   equivalenceClasses: EquivalenceClass[],
@@ -157,27 +173,36 @@ function calculateMarketerRisk(
   successfulMatches: number;
 } {
   const totalRecords = equivalenceClasses.reduce((sum, ec) => sum + ec.size, 0);
+  
+  // Count k-anonymity violations (groups with size < 2)
+  const kViolations = equivalenceClasses.filter((ec) => ec.size < 2).length;
 
   let totalMarketerRisk = 0;
   const perClassRisks: number[] = [];
   let successfulMatches = 0;
 
   equivalenceClasses.forEach((ec) => {
-    // Marketer targeting efficiency
-    // Assumes attacker can use pattern analysis
-    const sampleProportion = ec.size / totalRecords;
-    const estimatedPopGroupSize = Math.max(
-      1,
-      Math.round(sampleProportion * populationSize)
-    );
+    // For unique records, marketer attack is very effective (60% risk)
+    let risk: number;
+    
+    if (ec.size === 1) {
+      risk = 0.6;
+    } else {
+      // For non-unique small groups, marketer can still identify patterns
+      const sampleProportion = ec.size / totalRecords;
+      const estimatedPopGroupSize = Math.max(
+        1,
+        Math.round(sampleProportion * populationSize)
+      );
 
-    // Risk with targeting efficiency factor (attacker knows patterns)
-    let risk = ec.size / estimatedPopGroupSize;
+      // Base risk calculation
+      risk = ec.size / estimatedPopGroupSize;
 
-    // Apply targeting efficiency: attacker can boost re-identification
-    // by understanding patterns, but not perfectly
-    const targetingBoost = Math.min(1.0, ec.size / 5); // Boost if group size > 5
-    risk = Math.min(1.0, risk * (1 + targetingBoost * 0.3));
+      // Apply targeting efficiency: marketer uses pattern analysis
+      // Boost effectiveness for groups smaller than 5
+      const targetingBoost = Math.min(0.4, (5 - ec.size) * 0.1);
+      risk = Math.min(1.0, risk * (1 + targetingBoost));
+    }
 
     perClassRisks.push(risk);
     totalMarketerRisk += risk * ec.size;
@@ -188,11 +213,14 @@ function calculateMarketerRisk(
     }
   });
 
-  const overallRisk =
+  // Add penalty for k-anonymity violations (marketer targets small groups)
+  const violationPenalty = Math.min(0.25, (kViolations / totalRecords) * 0.5);
+  let overallRisk =
     totalRecords > 0 ? totalMarketerRisk / totalRecords : 0;
+  overallRisk = Math.min(1.0, overallRisk + violationPenalty);
 
   return {
-    overall: Math.min(overallRisk, 1.0),
+    overall: overallRisk,
     perClass: perClassRisks,
     successfulMatches,
   };
