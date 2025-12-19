@@ -11,7 +11,7 @@ import {
   type ActivityLog, type InsertActivityLog,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, inArray } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -117,6 +117,31 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteDataset(id: number): Promise<void> {
+    // Delete related records in cascade order (respecting foreign keys)
+    // First delete reports that reference this dataset
+    await db.delete(reports).where(eq(reports.datasetId, id));
+    
+    // Get privacy operations for this dataset to delete their utility measurements
+    const privacyOps = await db
+      .select({ id: privacyOperations.id })
+      .from(privacyOperations)
+      .where(eq(privacyOperations.datasetId, id));
+    
+    // Delete utility measurements that reference these privacy operations
+    if (privacyOps.length > 0) {
+      const privacyOpIds = privacyOps.map((op) => op.id);
+      await db
+        .delete(utilityMeasurements)
+        .where(inArray(utilityMeasurements.processedOperationId, privacyOpIds));
+    }
+    
+    // Delete privacy operations for this dataset
+    await db.delete(privacyOperations).where(eq(privacyOperations.datasetId, id));
+    
+    // Delete risk assessments for this dataset
+    await db.delete(riskAssessments).where(eq(riskAssessments.datasetId, id));
+    
+    // Finally delete the dataset
     await db.delete(datasets).where(eq(datasets.id, id));
   }
 

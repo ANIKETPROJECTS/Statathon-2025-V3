@@ -569,7 +569,7 @@ export default function UploadPage() {
                                         variant="outline" 
                                         size="sm"
                                         onClick={() => handleAutoFix(dataset.id, dataset)}
-                                        disabled={isFixing[dataset.id] || fixResults[dataset.id]}
+                                        disabled={!!(isFixing[dataset.id] || fixResults[dataset.id])}
                                       >
                                         <Wrench className="h-4 w-4 mr-2" />
                                         {isFixing[dataset.id] ? "Fixing..." : "Auto Fix Issues"}
