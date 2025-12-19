@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Shield, Lock, Database, FileCheck, BarChart3, Loader2 } from "lucide-react";
+import backgroundImage from "@assets/pexels-artempodrez-5716032_1766146316267.jpg";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -239,13 +240,22 @@ export default function AuthPage() {
         </Card>
       </div>
 
-      <div className="hidden lg:flex flex-1 bg-primary items-center justify-center p-12">
-        <div className="max-w-lg text-primary-foreground">
+      <div 
+        className="hidden lg:flex flex-1 items-center justify-center p-12 relative bg-cover bg-center"
+        style={{
+          backgroundImage: `url(${backgroundImage})`,
+        }}
+      >
+        <div 
+          className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/40"
+          style={{ zIndex: 1 }}
+        />
+        <div className="max-w-lg text-white relative z-10">
           <div className="flex items-center gap-3 mb-8">
             <Shield className="h-12 w-12" />
             <div>
               <h1 className="text-3xl font-bold">SafeData Pipeline</h1>
-              <p className="text-primary-foreground/80">Government of India</p>
+              <p className="text-white/90">Government of India</p>
             </div>
           </div>
           
@@ -255,59 +265,59 @@ export default function AuthPage() {
           
           <div className="space-y-4">
             <div className="flex items-start gap-4">
-              <div className="p-2 bg-primary-foreground/10 rounded-lg">
+              <div className="p-2 bg-white/10 rounded-lg">
                 <Lock className="h-6 w-6" />
               </div>
               <div>
                 <h3 className="font-semibold">Advanced Anonymization</h3>
-                <p className="text-sm text-primary-foreground/80">
+                <p className="text-sm text-white/80">
                   K-Anonymity, L-Diversity, T-Closeness, and Differential Privacy
                 </p>
               </div>
             </div>
             
             <div className="flex items-start gap-4">
-              <div className="p-2 bg-primary-foreground/10 rounded-lg">
+              <div className="p-2 bg-white/10 rounded-lg">
                 <Database className="h-6 w-6" />
               </div>
               <div>
                 <h3 className="font-semibold">Risk Assessment</h3>
-                <p className="text-sm text-primary-foreground/80">
+                <p className="text-sm text-white/80">
                   Comprehensive re-identification risk analysis and mitigation
                 </p>
               </div>
             </div>
             
             <div className="flex items-start gap-4">
-              <div className="p-2 bg-primary-foreground/10 rounded-lg">
+              <div className="p-2 bg-white/10 rounded-lg">
                 <FileCheck className="h-6 w-6" />
               </div>
               <div>
                 <h3 className="font-semibold">Utility Preservation</h3>
-                <p className="text-sm text-primary-foreground/80">
+                <p className="text-sm text-white/80">
                   Measure and maintain data utility after anonymization
                 </p>
               </div>
             </div>
             
             <div className="flex items-start gap-4">
-              <div className="p-2 bg-primary-foreground/10 rounded-lg">
+              <div className="p-2 bg-white/10 rounded-lg">
                 <BarChart3 className="h-6 w-6" />
               </div>
               <div>
                 <h3 className="font-semibold">Comprehensive Reports</h3>
-                <p className="text-sm text-primary-foreground/80">
+                <p className="text-sm text-white/80">
                   Generate executive, technical, and compliance reports
                 </p>
               </div>
             </div>
           </div>
           
-          <div className="mt-12 pt-8 border-t border-primary-foreground/20">
-            <p className="text-sm text-primary-foreground/60">
+          <div className="mt-12 pt-8 border-t border-white/20">
+            <p className="text-sm text-white/70">
               Ministry of Electronics and Information Technology
             </p>
-            <p className="text-xs text-primary-foreground/40 mt-1">
+            <p className="text-xs text-white/50 mt-1">
               Developed by AIRAVATA Technologies
             </p>
           </div>
