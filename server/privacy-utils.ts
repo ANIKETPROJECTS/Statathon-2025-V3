@@ -7,7 +7,6 @@ export interface EquivalenceClassInfo {
   key: string;
   records: any[];
   size: number;
-  sensitiveValues: Set<string>;
   distinctCount: number;
 }
 
@@ -25,21 +24,24 @@ export function applyLDiversityDistinct(
   // Build equivalence classes
   const ecMap = new Map<string, EquivalenceClassInfo>();
 
+  const sensitiveValuesByKey = new Map<string, Set<string>>();
+
   data.forEach((row) => {
     const key = quasiIdentifiers.map((qi) => String(row[qi] || "")).join("|");
     if (!ecMap.has(key)) {
-      ecMap.set(key, { key, records: [], size: 0, sensitiveValues: new Set(), distinctCount: 0 });
+      ecMap.set(key, { key, records: [], size: 0, distinctCount: 0 });
+      sensitiveValuesByKey.set(key, new Set());
     }
     const ec = ecMap.get(key)!;
     ec.records.push(row);
     ec.size++;
-    ec.sensitiveValues.add(String(row[sensitiveAttribute] || ""));
+    sensitiveValuesByKey.get(key)!.add(String(row[sensitiveAttribute] || ""));
   });
 
   // Count distinct values in each equivalence class
   const equivalenceClasses = Array.from(ecMap.values()).map((ec) => ({
     ...ec,
-    distinctCount: ec.sensitiveValues.size,
+    distinctCount: sensitiveValuesByKey.get(ec.key)!.size,
   }));
 
   let processedData: any[] = [];
@@ -81,7 +83,6 @@ export function applyTCloseness(
         key,
         records: [],
         size: 0,
-        sensitiveValues: new Set(),
         distinctCount: 0,
       });
     }
@@ -122,7 +123,10 @@ export function applyTCloseness(
 
     // Calculate EMD (simplified: L1 distance)
     let emd = 0;
-    const allValues = new Set([...overallDist.keys(), ...groupDist.keys()]);
+    const allValues = new Set<string>();
+    
+    overallDist.forEach((_, val) => allValues.add(val));
+    groupDist.forEach((_, val) => allValues.add(val));
 
     allValues.forEach((val) => {
       const overallProb = overallDist.get(val) || 0;
