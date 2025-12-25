@@ -1,15 +1,38 @@
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { PrivacyResultsDetail } from "@/components/privacy-results-detail";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 
+interface PrivacyResult {
+  technique: string;
+  recordsSuppressed: number;
+  totalRecords: number;
+  informationLoss: number;
+  equivalenceClasses?: number;
+  avgGroupSize?: number;
+  privacyRisk?: number;
+  diverseClasses?: number;
+  violatingClasses?: number;
+  avgDiversity?: number;
+  satisfyingClasses?: number;
+  avgDistance?: number;
+  maxDistance?: number;
+}
+
 export default function PrivacyResultsPage() {
   const [, navigate] = useLocation();
+  const [result, setResult] = useState<PrivacyResult | null>(null);
+
+  useEffect(() => {
+    const storedResult = sessionStorage.getItem("privacyResult");
+    if (storedResult) {
+      setResult(JSON.parse(storedResult));
+    }
+  }, []);
   
-  const state = history.state?.usr as any;
-  
-  if (!state?.result) {
+  if (!result) {
     return (
       <DashboardLayout title="Results" breadcrumbs={[{ label: "Privacy Enhancement" }, { label: "Results" }]}>
         <div className="flex flex-col items-center justify-center gap-4 py-20">
@@ -30,7 +53,7 @@ export default function PrivacyResultsPage() {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Privacy Enhancement
         </Button>
-        <PrivacyResultsDetail result={state.result} />
+        <PrivacyResultsDetail result={result} />
       </div>
     </DashboardLayout>
   );

@@ -121,26 +121,24 @@ export default function PrivacyPage() {
       });
       setTimeout(() => {
         setProcessingProgress(0);
-        // Navigate to results page with data
-        navigate("/privacy-results", {
-          state: {
-            result: {
-              technique: data.technique,
-              recordsSuppressed: data.recordsSuppressed || 0,
-              totalRecords: selectedDatasetObj?.rowCount || 0,
-              informationLoss: data.informationLoss || 0,
-              equivalenceClasses: (data.parameters as any)?.equivalenceClasses,
-              avgGroupSize: (data.parameters as any)?.avgGroupSize,
-              privacyRisk: (data.parameters as any)?.privacyRisk,
-              diverseClasses: (data.parameters as any)?.diverseClasses,
-              violatingClasses: (data.parameters as any)?.violatingClasses,
-              avgDiversity: (data.parameters as any)?.avgDiversity,
-              satisfyingClasses: (data.parameters as any)?.satisfyingClasses,
-              avgDistance: (data.parameters as any)?.avgDistance,
-              maxDistance: (data.parameters as any)?.maxDistance,
-            }
-          }
-        });
+        // Store result in sessionStorage
+        const result = {
+          technique: data.technique,
+          recordsSuppressed: data.recordsSuppressed || 0,
+          totalRecords: selectedDatasetObj?.rowCount || 0,
+          informationLoss: data.informationLoss || 0,
+          equivalenceClasses: (data.parameters as any)?.equivalenceClasses,
+          avgGroupSize: (data.parameters as any)?.avgGroupSize,
+          privacyRisk: (data.parameters as any)?.privacyRisk,
+          diverseClasses: (data.parameters as any)?.diverseClasses,
+          violatingClasses: (data.parameters as any)?.violatingClasses,
+          avgDiversity: (data.parameters as any)?.avgDiversity,
+          satisfyingClasses: (data.parameters as any)?.satisfyingClasses,
+          avgDistance: (data.parameters as any)?.avgDistance,
+          maxDistance: (data.parameters as any)?.maxDistance,
+        };
+        sessionStorage.setItem("privacyResult", JSON.stringify(result));
+        navigate("/privacy-results");
       }, 1000);
     },
     onError: (error: Error) => {
