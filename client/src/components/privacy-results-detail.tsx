@@ -280,32 +280,64 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
     );
   };
 
-  const renderLDiversityDetails = () => (
-    <div className="space-y-6">
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Diversity Analysis</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={[{ name: 'Actual', value: result.avgDiversity || 0 }, { name: 'Target', value: result.parameters?.lValue || 0 }]} layout="vertical">
-                <XAxis type="number" /><YAxis dataKey="name" type="category" /><Tooltip /><Bar dataKey="value" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Compliance Summary</CardTitle></CardHeader>
-          <CardContent className="flex items-center justify-center h-[200px]">
-             <div className="text-center">
-                <div className="text-3xl font-bold text-primary">{result.diverseClasses}</div>
-                <div className="text-[10px] text-muted-foreground uppercase font-bold">Groups Protected</div>
-             </div>
-          </CardContent>
-        </Card>
+  const renderLDiversityDetails = () => {
+    const minD = (result as any).minDiversity || 0;
+    const avgD = result.avgDiversity || 0;
+    const maxD = (result as any).maxDiversity || 0;
+    const targetD = result.parameters?.lValue || 0;
+    const score = (result as any).diversityScore || (targetD > 0 ? Math.min(100, (minD / targetD) * 100) : 0);
+
+    const diversityDistData = [
+      { name: 'Min Diversity', value: minD },
+      { name: 'Avg Diversity', value: avgD },
+      { name: 'Max Diversity', value: maxD },
+    ];
+
+    return (
+      <div className="space-y-6">
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card>
+            <CardHeader><CardTitle className="text-sm">Diversity Analysis</CardTitle></CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={diversityDistData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle className="text-sm">Compliance Summary</CardTitle></CardHeader>
+            <CardContent className="flex items-center justify-center relative h-[200px]">
+              <div className="text-center">
+                <p className="text-4xl font-black text-purple-600">{score.toFixed(0)}%</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Diversity Score</p>
+                <div className="mt-4 text-left space-y-2">
+                  <div className="flex items-center gap-2 text-[10px]">
+                    <CheckCircle className="h-3 w-3 text-purple-500" />
+                    <span>Attribute homogeneity minimized</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px]">
+                    <CheckCircle className="h-3 w-3 text-purple-500" />
+                    <span>Target L-Value: {targetD}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px]">
+                    <Badge variant="secondary" className="text-[9px]">{result.diverseClasses} Groups Protected</Badge>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        {renderDataPreview()}
+        {renderFileAccess()}
       </div>
-      {renderDataPreview()}
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="space-y-6 pb-20">

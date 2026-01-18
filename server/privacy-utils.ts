@@ -119,6 +119,9 @@ export function applyLDiversityDistinct(
   diverseClasses: number;
   violatingClasses: number;
   avgDiversity: number;
+  minDiversity: number;
+  maxDiversity: number;
+  diversityScore: number;
 } {
   const ecMap = new Map<string, EquivalenceClassInfo>();
   const sensitiveValuesByKey = new Map<string, Set<string>>();
@@ -158,6 +161,13 @@ export function applyLDiversityDistinct(
   });
 
   const avgDiversity = diversities.length > 0 ? diversities.reduce((a, b) => a + b, 0) / diversities.length : 0;
+  const minDiversity = diversities.length > 0 ? Math.min(...diversities) : 0;
+  const maxDiversity = diversities.length > 0 ? Math.max(...diversities) : 0;
+  
+  // Calculate a 0-100 score representing how well L-diversity is met
+  const diversityScore = Math.min(100, Math.round((minDiversity / lValue) * 100));
+
+  console.log(`[L-Diversity Debug] lValue: ${lValue}, minDiversity: ${minDiversity}, score: ${diversityScore}%`);
 
   return { 
     processedData, 
@@ -165,7 +175,10 @@ export function applyLDiversityDistinct(
     informationLoss: recordsSuppressed / data.length,
     diverseClasses,
     violatingClasses,
-    avgDiversity
+    avgDiversity,
+    minDiversity,
+    maxDiversity,
+    diversityScore
   };
 }
 
