@@ -278,7 +278,7 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20">
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
           <Badge className="bg-green-500 hover:bg-green-600 text-white border-0 py-1">Success</Badge>
