@@ -675,7 +675,18 @@ export async function registerRoutes(
       }
 
       const data = dataset.data as any[];
-      const { processedData, recordsSuppressed, informationLoss, diverseClasses, violatingClasses, avgDiversity } = applyLDiversityDistinct(
+      const { 
+        processedData, 
+        recordsSuppressed, 
+        informationLoss, 
+        diverseClasses, 
+        violatingClasses, 
+        avgDiversity,
+        minDiversity,
+        maxDiversity,
+        privacyRisk,
+        diversityScore
+      } = applyLDiversityDistinct(
         data,
         quasiIdentifiers,
         sensitiveAttribute,
@@ -687,7 +698,18 @@ export async function registerRoutes(
         userId: req.user!.id,
         technique: "l-diversity",
         method: method || "distinct",
-        parameters: { lValue, sensitiveAttribute, quasiIdentifiers, diverseClasses, violatingClasses, avgDiversity },
+        parameters: { 
+          lValue, 
+          sensitiveAttribute, 
+          quasiIdentifiers, 
+          diverseClasses, 
+          violatingClasses, 
+          avgDiversity,
+          minDiversity,
+          maxDiversity,
+          privacyRisk,
+          diversityScore
+        },
         processedData,
         recordsSuppressed,
         informationLoss,

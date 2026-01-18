@@ -281,13 +281,12 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
   };
 
   const renderLDiversityDetails = () => {
-    const minD = result.minGroupSize || (result.parameters as any)?.minDiversity || 0;
-    const avgD = result.avgDiversity || (result.parameters as any)?.avgDiversity || 0;
-    const maxD = (result as any).maxDiversity || (result.parameters as any)?.maxDiversity || 0;
-    const targetD = result.parameters?.lValue || 0;
-    const score = result.privacyRisk !== undefined && result.privacyRisk > 0 
-      ? result.privacyRisk 
-      : (targetD > 0 ? Math.min(100, (minD / targetD) * 100) : 0);
+    const params = result.parameters as any;
+    const minD = (result as any).minDiversity ?? params?.minDiversity ?? 0;
+    const avgD = (result as any).avgDiversity ?? params?.avgDiversity ?? 0;
+    const maxD = (result as any).maxDiversity ?? params?.maxDiversity ?? 0;
+    const targetD = params?.lValue ?? 0;
+    const score = result.privacyRisk ?? params?.privacyRisk ?? 0;
 
     const diversityDistData = [
       { name: 'Min Diversity', value: minD },

@@ -35,6 +35,13 @@ export const datasets = pgTable("datasets", {
   completenessScore: real("completeness_score"),
   consistencyScore: real("consistency_score"),
   validityScore: real("validity_score"),
+  minGroupSize: integer("min_group_size"),
+  maxGroupSize: integer("max_group_size"),
+  minDiversity: integer("min_diversity"),
+  maxDiversity: integer("max_diversity"),
+  avgDiversity: real("avg_diversity"),
+  diversityScore: real("diversity_score"),
+  privacyRisk: real("privacy_risk"),
   data: jsonb("data").notNull(), // Store the actual data
   uploadedAt: timestamp("uploaded_at").defaultNow(),
 });
