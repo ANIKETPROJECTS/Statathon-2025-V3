@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, ScatterChart, Scatter, ZAxis } from "recharts";
-import { CheckCircle, AlertCircle, TrendingDown, Users, Shield, Zap, Info, Filter, Layers } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
+import { CheckCircle, AlertCircle, TrendingDown, Users, Shield, Zap, Filter, Eye, Layers, Info } from "lucide-react";
 
 interface DetailedResult {
   technique: string;
@@ -20,18 +20,87 @@ interface DetailedResult {
   avgDistance?: number;
   maxDistance?: number;
   parameters?: any;
+  processedData?: any[];
 }
-
-const COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'];
 
 export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
   const recordsRetained = result.totalRecords - result.recordsSuppressed;
   const retentionRate = ((recordsRetained / result.totalRecords) * 100).toFixed(1);
 
-  const suppressionData = [
-    { name: "Retained", value: recordsRetained },
-    { name: "Suppressed", value: result.recordsSuppressed },
-  ];
+  const renderDataPreview = () => {
+    if (!result.processedData || result.processedData.length === 0) return null;
+
+    const previewData = result.processedData.slice(0, 5);
+    const columns = Object.keys(previewData[0]);
+
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Eye className="h-4 w-4" />
+                Enhanced Data Preview
+              </CardTitle>
+              <CardDescription className="text-xs">Actual sample of the anonymized dataset</CardDescription>
+            </div>
+            <Badge variant="secondary" className="text-[10px]">{result.processedData.length} records generated</Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border overflow-x-auto bg-muted/20">
+            <table className="w-full text-[11px] font-mono">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  {columns.map(col => (
+                    <th key={col} className="p-2 text-left font-semibold text-muted-foreground uppercase tracking-wider">{col}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {previewData.map((row, i) => (
+                  <tr key={i} className="border-b last:border-0 hover:bg-muted/40 transition-colors">
+                    {columns.map(col => (
+                      <td key={col} className="p-2 whitespace-nowrap">
+                        {String(row[col]).includes('*') || row[col] === null ? (
+                          <span className="text-amber-600 font-bold">{String(row[col]) || 'NULL'}</span>
+                        ) : (
+                          <span className="text-foreground">{String(row[col])}</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          
+          <div className="mt-4 p-4 rounded-lg bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/20">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-md">
+                <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200">Enhancement Breakdown</h4>
+                <p className="text-xs leading-relaxed text-blue-800 dark:text-blue-300/80">
+                  {result.technique === 'k-anonymity' && 
+                    `QUASI-IDENTIFIER MASKING: Attributes like zip code, age, or gender were generalized or suppressed. The data above shows '${previewData[0] ? Object.keys(previewData[0]).filter(k => String(previewData[0][k]).includes('*'))[0] : 'QI'}' values replaced with '*' to ensure no single individual stands out from a crowd of ${result.parameters?.kValue || 5}.`}
+                  {result.technique === 'l-diversity' && 
+                    `SENSITIVE ATTRIBUTE DIVERSIFICATION: We ensured that for every combination of identity traits, the sensitive field '${result.parameters?.sensitiveAttribute}' contains at least ${result.parameters?.lValue} different possibilities. This prevents 'Homogeneity Attacks' where an attacker knows you're in a group but could otherwise guess your status.`}
+                  {result.technique === 'differential-privacy' && 
+                    `NOISE INJECTION (LAPLACE): Statistical noise was mathematically added to numeric values. This means the specific values in the table above are 'perturbed'—they are close to the truth but contain a random offset (ε=${result.parameters?.epsilon}) that makes it impossible to reverse-engineer any specific person's raw data.`}
+                  {result.technique === 'synthetic-data' && 
+                    `STATISTICAL REPLICATION: None of the records above existed in your original file. They are 'synthetic twins' that maintain the same averages, correlations, and trends as your real data but carry zero risk of exposing real people.`}
+                  {result.technique === 't-closeness' && 
+                    `DISTRIBUTION ALIGNMENT: The spread of sensitive values in each group was forced to match the global average. This stops 'Skewness Attacks' where an attacker learns something new just by seeing how much a specific group differs from the general population.`}
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
 
   const renderKAnonymityDetails = () => {
     const groupDistData = [
@@ -39,353 +108,107 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
       { name: 'Avg Size', value: result.avgGroupSize || 0 },
       { name: 'Max Size', value: result.maxGroupSize || 0 },
     ];
-
-    const riskData = [
-      { name: 'Identity Risk', value: (result.privacyRisk || 0) * 100 },
-      { name: 'Protection', value: 100 - (result.privacyRisk || 0) * 100 },
-    ];
-
     return (
-      <>
+      <div className="space-y-6">
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                Equivalence Class Size Distribution
-              </CardTitle>
-              <CardDescription>Size range of grouped records</CardDescription>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-sm">Group Sizes</CardTitle></CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={groupDistData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                </BarChart>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={groupDistData}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" /><YAxis /><Tooltip /><Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} /></BarChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
-
           <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Shield className="h-4 w-4" />
-                Probabilistic Risk Analysis
-              </CardTitle>
-              <CardDescription>Likelihood of individual re-identification</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[250px] flex items-center justify-center relative">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={riskData}
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      <Cell fill="#ef4444" />
-                      <Cell fill="#10b981" />
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center pt-8">
-                  <p className="text-2xl font-bold">{((result.privacyRisk || 0) * 100).toFixed(1)}%</p>
-                  <p className="text-[10px] uppercase text-muted-foreground">Risk Score</p>
-                </div>
+            <CardHeader><CardTitle className="text-sm">Identity Protection</CardTitle></CardHeader>
+            <CardContent className="flex items-center justify-center relative h-[200px]">
+              <div className="text-center">
+                <p className="text-4xl font-black text-green-600">{(100 - (result.privacyRisk || 0) * 100).toFixed(0)}%</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Safety Score</p>
               </div>
             </CardContent>
           </Card>
         </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Equivalence Class Summary Table</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-md border overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="p-2 text-left font-medium">Metric</th>
-                    <th className="p-2 text-left font-medium">Value</th>
-                    <th className="p-2 text-left font-medium">Implication</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b">
-                    <td className="p-2 font-medium">Total Equivalence Classes</td>
-                    <td className="p-2">{result.equivalenceClasses}</td>
-                    <td className="p-2 text-muted-foreground">Number of distinct patterns in protected data</td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="p-2 font-medium">Average Group Size</td>
-                    <td className="p-2">{result.avgGroupSize?.toFixed(2)}</td>
-                    <td className="p-2 text-muted-foreground">Mean number of people per anonymity group</td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="p-2 font-medium">Smallest Group Size</td>
-                    <td className="p-2">{result.minGroupSize}</td>
-                    <td className="p-2 text-muted-foreground">Matches requested K-value ({result.parameters?.kValue})</td>
-                  </tr>
-                  <tr>
-                    <td className="p-2 font-medium">Information Loss</td>
-                    <td className="p-2">{(result.informationLoss * 100).toFixed(2)}%</td>
-                    <td className="p-2 text-muted-foreground">Detail lost due to suppression/generalization</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      </>
+        {renderDataPreview()}
+      </div>
     );
   };
 
-  const renderLDiversityDetails = () => {
-    const diversityData = [
-      { name: 'Avg Diversity', value: result.avgDiversity || 0 },
-      { name: 'Target (L)', value: result.parameters?.lValue || 0 },
-    ];
-
-    const classCompositionData = [
-      { name: 'Diverse Classes', value: result.diverseClasses || 0, color: '#10b981' },
-      { name: 'Violating Classes', value: result.violatingClasses || 0, color: '#ef4444' },
-    ];
-
-    return (
-      <>
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Layers className="h-4 w-4" />
-                Diversity Benchmark (L-Value)
-              </CardTitle>
-              <CardDescription>Comparison of target vs. actual diversity</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={diversityData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" />
-                  <Tooltip />
-                  <Bar dataKey="value" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={40} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Filter className="h-4 w-4" />
-                Class Compliance Status
-              </CardTitle>
-              <CardDescription>Records satisfying L-Diversity constraint</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[250px] flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={classCompositionData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {classCompositionData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
+  const renderLDiversityDetails = () => (
+    <div className="space-y-6">
+      <div className="grid gap-6 md:grid-cols-2">
         <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Attribute Variance Analysis</CardTitle>
-            <CardDescription>Mathematical breakdown of L-Diversity effectiveness</CardDescription>
-          </CardHeader>
+          <CardHeader><CardTitle className="text-sm">Diversity Analysis</CardTitle></CardHeader>
           <CardContent>
-            <div className="rounded-md border overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="p-2 text-left font-medium">Attribute Metric</th>
-                    <th className="p-2 text-left font-medium">Value</th>
-                    <th className="p-2 text-left font-medium">Analysis</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b">
-                    <td className="p-2 font-medium">Average L-Diversity</td>
-                    <td className="p-2 font-bold">{result.avgDiversity?.toFixed(2)}</td>
-                    <td className="p-2 text-muted-foreground">Mean number of distinct sensitive values per group</td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="p-2 font-medium">Compliance Rate</td>
-                    <td className="p-2">
-                      {(((result.diverseClasses || 0) / ((result.diverseClasses || 0) + (result.violatingClasses || 0))) * 100).toFixed(1)}%
-                    </td>
-                    <td className="p-2 text-muted-foreground">Percentage of groups meeting the L={result.parameters?.lValue} target</td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="p-2 font-medium">Sensitive Attribute</td>
-                    <td className="p-2"><Badge variant="outline">{result.parameters?.sensitiveAttribute}</Badge></td>
-                    <td className="p-2 text-muted-foreground">Primary variable targeted for diversity enhancement</td>
-                  </tr>
-                  <tr>
-                    <td className="p-2 font-medium">Suppression Impact</td>
-                    <td className="p-2">{result.recordsSuppressed} records</td>
-                    <td className="p-2 text-muted-foreground">Records removed from classes that could not meet diversity</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={[{ name: 'Actual', value: result.avgDiversity || 0 }, { name: 'Target', value: result.parameters?.lValue || 0 }]} layout="vertical">
+                <XAxis type="number" /><YAxis dataKey="name" type="category" /><Tooltip /><Bar dataKey="value" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
-      </>
-    );
-  };
+        <Card>
+          <CardHeader><CardTitle className="text-sm">Compliance Summary</CardTitle></CardHeader>
+          <CardContent className="flex items-center justify-center h-[200px]">
+             <div className="text-center">
+                <div className="text-3xl font-bold text-primary">{result.diverseClasses}</div>
+                <div className="text-[10px] text-muted-foreground uppercase font-bold">Groups Protected</div>
+             </div>
+          </CardContent>
+        </Card>
+      </div>
+      {renderDataPreview()}
+    </div>
+  );
 
   return (
     <div className="space-y-6">
-      <Card className="bg-primary/5 border-primary/20">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5 text-primary" />
-                Detailed Analysis: {result.technique.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-              </CardTitle>
-              <CardDescription>Comprehensive privacy and utility evaluation</CardDescription>
-            </div>
-            <Badge variant="outline" className="capitalize px-3 py-1">
-              {result.parameters?.method || 'Standard'} Implementation
-            </Badge>
-          </div>
-        </CardHeader>
-      </Card>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <Badge className="bg-green-500 hover:bg-green-600 text-white border-0 py-1">Success</Badge>
+          <h2 className="text-lg font-bold tracking-tight">Enhancement Finalized</h2>
+        </div>
+        <p className="text-xs text-muted-foreground">The data has been mathematically transformed using {result.technique.replace("-", " ")} logic.</p>
+      </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center text-center space-y-2">
-              <div className="p-2 bg-blue-100 rounded-full dark:bg-blue-900/30">
-                <Users className="h-5 w-5 text-blue-600" />
-              </div>
-              <p className="text-3xl font-bold">{recordsRetained}</p>
-              <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">Output Records</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center text-center space-y-2">
-              <div className="p-2 bg-purple-100 rounded-full dark:bg-purple-900/30">
-                <TrendingDown className="h-5 w-5 text-purple-600" />
-              </div>
-              <p className="text-3xl font-bold">{(result.informationLoss * 100).toFixed(1)}%</p>
-              <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">Info Loss</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center text-center space-y-2">
-              <div className="p-2 bg-amber-100 rounded-full dark:bg-amber-900/30">
-                <AlertCircle className="h-5 w-5 text-amber-600" />
-              </div>
-              <p className="text-3xl font-bold">{result.recordsSuppressed}</p>
-              <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">Suppressed</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center text-center space-y-2">
-              <div className="p-2 bg-green-100 rounded-full dark:bg-green-900/30">
-                <Zap className="h-5 w-5 text-green-600" />
-              </div>
-              <p className="text-3xl font-bold">{result.totalRecords}</p>
-              <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">Input Total</p>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+        <div className="p-3 bg-card border rounded-lg flex flex-col items-center">
+          <Users className="h-4 w-4 text-blue-500 mb-1" />
+          <span className="text-xl font-bold tracking-tighter">{recordsRetained}</span>
+          <span className="text-[9px] text-muted-foreground uppercase font-bold">Output</span>
+        </div>
+        <div className="p-3 bg-card border rounded-lg flex flex-col items-center">
+          <TrendingDown className="h-4 w-4 text-purple-500 mb-1" />
+          <span className="text-xl font-bold tracking-tighter">{(result.informationLoss * 100).toFixed(1)}%</span>
+          <span className="text-[9px] text-muted-foreground uppercase font-bold">Loss</span>
+        </div>
+        <div className="p-3 bg-card border rounded-lg flex flex-col items-center">
+          <AlertCircle className="h-4 w-4 text-amber-500 mb-1" />
+          <span className="text-xl font-bold tracking-tighter">{result.recordsSuppressed}</span>
+          <span className="text-[9px] text-muted-foreground uppercase font-bold">Removed</span>
+        </div>
+        <div className="p-3 bg-card border rounded-lg flex flex-col items-center">
+          <Shield className="h-4 w-4 text-green-500 mb-1" />
+          <span className="text-xl font-bold tracking-tighter">{result.totalRecords}</span>
+          <span className="text-[9px] text-muted-foreground uppercase font-bold">Input</span>
+        </div>
       </div>
 
       {result.technique === "k-anonymity" ? renderKAnonymityDetails() : 
        result.technique === "l-diversity" ? renderLDiversityDetails() : (
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Record Composition</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-sm">Summary Analysis</CardTitle></CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={suppressionData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Technique Overview</CardTitle>
-              <CardDescription>Parameters applied during processing</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {Object.entries(result.parameters || {}).map(([key, val]: [string, any]) => (
-                  <div key={key} className="flex justify-between items-center border-b pb-2">
-                    <span className="text-sm font-medium capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
-                    <Badge variant="secondary">{String(val)}</Badge>
-                  </div>
-                ))}
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs"><span className="text-muted-foreground">Retention Rate</span><span className="font-bold">{retentionRate}%</span></div>
+                <div className="w-full bg-muted rounded-full h-1.5"><div className="bg-blue-600 h-1.5 rounded-full" style={{ width: `${retentionRate}%` }}></div></div>
               </div>
             </CardContent>
           </Card>
+          {renderDataPreview()}
         </div>
       )}
-
-      <Card className="border-green-200 bg-green-50/30 dark:border-green-900/20 dark:bg-green-900/5">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-400">
-            <CheckCircle className="h-5 w-5" />
-            Process Verification
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            The {result.technique.replace("-", " ")} algorithm has finished. 
-            All {recordsRetained} output records now satisfy the mathematical safety requirements 
-            defined in your configuration.
-          </p>
-        </CardContent>
-      </Card>
     </div>
   );
 }
