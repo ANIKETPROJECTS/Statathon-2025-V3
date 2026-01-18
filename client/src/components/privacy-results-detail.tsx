@@ -281,12 +281,18 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
   };
 
   const renderLDiversityDetails = () => {
+    console.log("L-Diversity Result Object:", result);
     const params = result.parameters as any;
+    console.log("L-Diversity Parameters:", params);
+    
+    // Fallback logic to find metrics in various possible locations
     const minD = (result as any).minDiversity ?? params?.minDiversity ?? 0;
     const avgD = (result as any).avgDiversity ?? params?.avgDiversity ?? 0;
     const maxD = (result as any).maxDiversity ?? params?.maxDiversity ?? 0;
     const targetD = params?.lValue ?? 0;
-    const score = result.privacyRisk ?? params?.privacyRisk ?? 0;
+    const score = (result as any).privacyRisk ?? params?.privacyRisk ?? 0;
+    
+    console.log("L-Diversity Parsed Values:", { minD, avgD, maxD, targetD, score });
 
     const diversityDistData = [
       { name: 'Min Diversity', value: minD },

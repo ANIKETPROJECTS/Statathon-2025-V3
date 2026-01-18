@@ -150,16 +150,22 @@ export function applyLDiversityDistinct(
   let violatingClasses = 0;
   const diversities: number[] = [];
 
-  equivalenceClasses.forEach((ec) => {
-    diversities.push(ec.distinctCount);
-    if (ec.distinctCount >= lValue) {
-      processedData.push(...ec.records);
-      diverseClasses++;
-    } else {
-      recordsSuppressed += ec.size;
-      violatingClasses++;
-    }
-  });
+    const minRecordsNeeded = lValue;
+    
+    equivalenceClasses.forEach((ec) => {
+      diversities.push(ec.distinctCount);
+      if (ec.distinctCount >= lValue) {
+        processedData.push(...ec.records);
+        diverseClasses++;
+      } else {
+        // Log the reason for suppression
+        console.log(`[L-Diversity Violation] EC Key: ${ec.key}, Distinct Count: ${ec.distinctCount} < L: ${lValue}, Size: ${ec.size}`);
+        
+        // Count as suppressed
+        recordsSuppressed += ec.size;
+        violatingClasses++;
+      }
+    });
 
   const avgDiversity = diversities.length > 0 ? diversities.reduce((a, b) => a + b, 0) / diversities.length : 0;
   const minDiversity = diversities.length > 0 ? Math.min(...diversities) : 0;
