@@ -69,147 +69,152 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
     });
   };
 
+  const renderFileAccess = () => {
+    if (!result.processedData || result.processedData.length === 0) return null;
+    const allData = result.processedData;
+    const columns = Object.keys(allData[0]);
+
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Enhanced File Access
+              </CardTitle>
+              <CardDescription className="text-xs">View or download the complete enhanced dataset</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Eye className="h-4 w-4" />
+                  Full Data View
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+                <DialogHeader>
+                  <DialogTitle>Enhanced Dataset (Full View)</DialogTitle>
+                </DialogHeader>
+                <div className="flex-1 overflow-auto rounded-md border mt-4">
+                  <table className="w-full text-[11px] font-mono">
+                    <thead className="sticky top-0 bg-background z-10">
+                      <tr className="border-b bg-muted/50">
+                        {columns.map(col => (
+                          <th key={col} className="p-2 text-left font-semibold text-muted-foreground uppercase tracking-wider">{col}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allData.map((row, i) => (
+                        <tr key={i} className="border-b last:border-0 hover:bg-muted/40 transition-colors">
+                          {columns.map(col => (
+                            <td key={col} className="p-2 whitespace-nowrap">
+                              {String(row[col]).includes('*') || row[col] === null ? (
+                                <span className="text-amber-600 font-bold">{String(row[col]) || 'NULL'}</span>
+                              ) : (
+                                <span className="text-foreground">{String(row[col])}</span>
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <Button variant="outline" size="sm" className="gap-2" onClick={downloadCSV}>
+              <Download className="h-4 w-4" />
+              Download CSV
+            </Button>
+            <Button variant="outline" size="sm" className="gap-2" onClick={downloadExcel}>
+              <Download className="h-4 w-4" />
+              Download Excel
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   const renderDataPreview = () => {
     if (!result.processedData || result.processedData.length === 0) return null;
 
     const previewData = result.processedData.slice(0, 5);
-    const allData = result.processedData;
     const columns = Object.keys(previewData[0]);
 
     return (
-      <div className="space-y-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Eye className="h-4 w-4" />
-                  Enhanced Data Preview
-                </CardTitle>
-                <CardDescription className="text-xs">Actual sample of the anonymized dataset</CardDescription>
-              </div>
-              <Badge variant="secondary" className="text-[10px]">{result.processedData.length} records generated</Badge>
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Eye className="h-4 w-4" />
+                Enhanced Data Preview
+              </CardTitle>
+              <CardDescription className="text-xs">Actual sample of the anonymized dataset</CardDescription>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-md border overflow-x-auto bg-muted/20">
-              <table className="w-full text-[11px] font-mono">
-                <thead>
-                  <tr className="border-b bg-muted/50">
+            <Badge variant="secondary" className="text-[10px]">{result.processedData.length} records generated</Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border overflow-x-auto bg-muted/20">
+            <table className="w-full text-[11px] font-mono">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  {columns.map(col => (
+                    <th key={col} className="p-2 text-left font-semibold text-muted-foreground uppercase tracking-wider">{col}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {previewData.map((row, i) => (
+                  <tr key={i} className="border-b last:border-0 hover:bg-muted/40 transition-colors">
                     {columns.map(col => (
-                      <th key={col} className="p-2 text-left font-semibold text-muted-foreground uppercase tracking-wider">{col}</th>
+                      <td key={col} className="p-2 whitespace-nowrap">
+                        {String(row[col]).includes('*') || row[col] === null ? (
+                          <span className="text-amber-600 font-bold">{String(row[col]) || 'NULL'}</span>
+                        ) : (
+                          <span className="text-foreground">{String(row[col])}</span>
+                        )}
+                      </td>
                     ))}
                   </tr>
-                </thead>
-                <tbody>
-                  {previewData.map((row, i) => (
-                    <tr key={i} className="border-b last:border-0 hover:bg-muted/40 transition-colors">
-                      {columns.map(col => (
-                        <td key={col} className="p-2 whitespace-nowrap">
-                          {String(row[col]).includes('*') || row[col] === null ? (
-                            <span className="text-amber-600 font-bold">{String(row[col]) || 'NULL'}</span>
-                          ) : (
-                            <span className="text-foreground">{String(row[col])}</span>
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            
-            <div className="mt-4 p-4 rounded-lg bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/20">
-              <div className="flex items-start gap-3">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-md">
-                  <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div className="space-y-1">
-                  <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200">Enhancement Breakdown</h4>
-                  <p className="text-xs leading-relaxed text-blue-800 dark:text-blue-300/80">
-                    {result.technique === 'k-anonymity' && 
-                      `QUASI-IDENTIFIER MASKING: Attributes like zip code, age, or gender were generalized or suppressed. The data above shows '${previewData[0] ? Object.keys(previewData[0]).filter(k => String(previewData[0][k]).includes('*'))[0] : 'QI'}' values replaced with '*' to ensure no single individual stands out from a crowd of ${result.parameters?.kValue || 5}.`}
-                    {result.technique === 'l-diversity' && 
-                      `SENSITIVE ATTRIBUTE DIVERSIFICATION: We ensured that for every combination of identity traits, the sensitive field '${result.parameters?.sensitiveAttribute}' contains at least ${result.parameters?.lValue} different possibilities. This prevents 'Homogeneity Attacks' where an attacker knows you're in a group but could otherwise guess your status.`}
-                    {result.technique === 'differential-privacy' && 
-                      `NOISE INJECTION (LAPLACE): Statistical noise was mathematically added to numeric values. This means the specific values in the table above are 'perturbed'—they are close to the truth but contain a random offset (ε=${result.parameters?.epsilon}) that makes it impossible to reverse-engineer any specific person's raw data.`}
-                    {result.technique === 'synthetic-data' && 
-                      `STATISTICAL REPLICATION: None of the records above existed in your original file. They are 'synthetic twins' that maintain the same averages, correlations, and trends as your real data but carry zero risk of exposing real people.`}
-                    {result.technique === 't-closeness' && 
-                      `DISTRIBUTION ALIGNMENT: The spread of sensitive values in each group was forced to match the global average. This stops 'Skewness Attacks' where an attacker learns something new just by seeing how much a specific group differs from the general population.`}
-                  </p>
-                </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          
+          <div className="mt-4 p-4 rounded-lg bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/20">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-md">
+                <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Enhanced File Access
-                </CardTitle>
-                <CardDescription className="text-xs">View or download the complete enhanced dataset</CardDescription>
+                <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200">Enhancement Breakdown</h4>
+                <p className="text-xs leading-relaxed text-blue-800 dark:text-blue-300/80">
+                  {result.technique === 'k-anonymity' && 
+                    `QUASI-IDENTIFIER MASKING: Attributes like zip code, age, or gender were generalized or suppressed. The data above shows '${previewData[0] ? Object.keys(previewData[0]).filter(k => String(previewData[0][k]).includes('*'))[0] : 'QI'}' values replaced with '*' to ensure no single individual stands out from a crowd of ${result.parameters?.kValue || 5}.`}
+                  {result.technique === 'l-diversity' && 
+                    `SENSITIVE ATTRIBUTE DIVERSIFICATION: We ensured that for every combination of identity traits, the sensitive field '${result.parameters?.sensitiveAttribute}' contains at least ${result.parameters?.lValue} different possibilities. This prevents 'Homogeneity Attacks' where an attacker knows you're in a group but could otherwise guess your status.`}
+                  {result.technique === 'differential-privacy' && 
+                    `NOISE INJECTION (LAPLACE): Statistical noise was mathematically added to numeric values. This means the specific values in the table above are 'perturbed'—they are close to the truth but contain a random offset (ε=${result.parameters?.epsilon}) that makes it impossible to reverse-engineer any specific person's raw data.`}
+                  {result.technique === 'synthetic-data' && 
+                    `STATISTICAL REPLICATION: None of the records above existed in your original file. They are 'synthetic twins' that maintain the same averages, correlations, and trends as your real data but carry zero risk of exposing real people.`}
+                  {result.technique === 't-closeness' && 
+                    `DISTRIBUTION ALIGNMENT: The spread of sensitive values in each group was forced to match the global average. This stops 'Skewness Attacks' where an attacker learns something new just by seeing how much a specific group differs from the general population.`}
+                </p>
               </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <Eye className="h-4 w-4" />
-                    Full Data View
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
-                  <DialogHeader>
-                    <DialogTitle>Enhanced Dataset (Full View)</DialogTitle>
-                  </DialogHeader>
-                  <div className="flex-1 overflow-auto rounded-md border mt-4">
-                    <table className="w-full text-[11px] font-mono">
-                      <thead className="sticky top-0 bg-background z-10">
-                        <tr className="border-b bg-muted/50">
-                          {columns.map(col => (
-                            <th key={col} className="p-2 text-left font-semibold text-muted-foreground uppercase tracking-wider">{col}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {allData.map((row, i) => (
-                          <tr key={i} className="border-b last:border-0 hover:bg-muted/40 transition-colors">
-                            {columns.map(col => (
-                              <td key={col} className="p-2 whitespace-nowrap">
-                                {String(row[col]).includes('*') || row[col] === null ? (
-                                  <span className="text-amber-600 font-bold">{String(row[col]) || 'NULL'}</span>
-                                ) : (
-                                  <span className="text-foreground">{String(row[col])}</span>
-                                )}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </DialogContent>
-              </Dialog>
-
-              <Button variant="outline" size="sm" className="gap-2" onClick={downloadCSV}>
-                <Download className="h-4 w-4" />
-                Download CSV
-              </Button>
-              <Button variant="outline" size="sm" className="gap-2" onClick={downloadExcel}>
-                <Download className="h-4 w-4" />
-                Download Excel
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
     );
   };
 
@@ -320,6 +325,7 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
           {renderDataPreview()}
         </div>
       )}
+      {renderFileAccess()}
     </div>
   );
 }
