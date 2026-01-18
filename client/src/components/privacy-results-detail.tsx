@@ -230,14 +230,17 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
     ];
     
     // Calculate safety score
-    const safetyScore = result.privacyRisk !== undefined ? result.privacyRisk : (minS > 1 ? (100 * (1 - 1 / minS)) : 0);
+    const safetyScore = result.privacyRisk !== undefined && result.privacyRisk > 1 
+      ? result.privacyRisk 
+      : (minS > 1 ? (100 * (1 - 1 / minS)) : (minS / (result.parameters?.kValue || 5)) * 100);
     
     console.log("[PrivacyResultsDetail] Render K-Anonymity Details", {
       minS,
       avgS,
       maxS,
       privacyRisk: result.privacyRisk,
-      calculatedSafetyScore: safetyScore
+      calculatedSafetyScore: safetyScore,
+      kValue: result.parameters?.kValue
     });
 
     return (
