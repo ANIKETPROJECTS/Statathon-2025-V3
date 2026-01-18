@@ -1,7 +1,18 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
-import { CheckCircle, AlertCircle, TrendingDown, Users, Shield, Zap, Filter, Eye, Layers, Info } from "lucide-react";
+import { CheckCircle, AlertCircle, TrendingDown, Users, Shield, Zap, Filter, Eye, Layers, Info, Download, FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import Papa from "papaparse";
+import * as XLSX from "xlsx";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface DetailedResult {
   technique: string;
@@ -24,81 +35,181 @@ interface DetailedResult {
 }
 
 export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
+  const { toast } = useToast();
   const recordsRetained = result.totalRecords - result.recordsSuppressed;
   const retentionRate = ((recordsRetained / result.totalRecords) * 100).toFixed(1);
+
+  const downloadCSV = () => {
+    if (!result.processedData) return;
+    const csv = Papa.unparse(result.processedData);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `enhanced_data_${result.technique}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({
+      title: "Success",
+      description: "CSV file downloaded successfully",
+    });
+  };
+
+  const downloadExcel = () => {
+    if (!result.processedData) return;
+    const ws = XLSX.utils.json_to_sheet(result.processedData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Enhanced Data");
+    XLSX.writeFile(wb, `enhanced_data_${result.technique}.xlsx`);
+    toast({
+      title: "Success",
+      description: "Excel file downloaded successfully",
+    });
+  };
 
   const renderDataPreview = () => {
     if (!result.processedData || result.processedData.length === 0) return null;
 
     const previewData = result.processedData.slice(0, 5);
+    const allData = result.processedData;
     const columns = Object.keys(previewData[0]);
 
     return (
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Eye className="h-4 w-4" />
-                Enhanced Data Preview
-              </CardTitle>
-              <CardDescription className="text-xs">Actual sample of the anonymized dataset</CardDescription>
+      <div className="space-y-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Eye className="h-4 w-4" />
+                  Enhanced Data Preview
+                </CardTitle>
+                <CardDescription className="text-xs">Actual sample of the anonymized dataset</CardDescription>
+              </div>
+              <Badge variant="secondary" className="text-[10px]">{result.processedData.length} records generated</Badge>
             </div>
-            <Badge variant="secondary" className="text-[10px]">{result.processedData.length} records generated</Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border overflow-x-auto bg-muted/20">
-            <table className="w-full text-[11px] font-mono">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  {columns.map(col => (
-                    <th key={col} className="p-2 text-left font-semibold text-muted-foreground uppercase tracking-wider">{col}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {previewData.map((row, i) => (
-                  <tr key={i} className="border-b last:border-0 hover:bg-muted/40 transition-colors">
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border overflow-x-auto bg-muted/20">
+              <table className="w-full text-[11px] font-mono">
+                <thead>
+                  <tr className="border-b bg-muted/50">
                     {columns.map(col => (
-                      <td key={col} className="p-2 whitespace-nowrap">
-                        {String(row[col]).includes('*') || row[col] === null ? (
-                          <span className="text-amber-600 font-bold">{String(row[col]) || 'NULL'}</span>
-                        ) : (
-                          <span className="text-foreground">{String(row[col])}</span>
-                        )}
-                      </td>
+                      <th key={col} className="p-2 text-left font-semibold text-muted-foreground uppercase tracking-wider">{col}</th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          
-          <div className="mt-4 p-4 rounded-lg bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/20">
-            <div className="flex items-start gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-md">
-                <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div className="space-y-1">
-                <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200">Enhancement Breakdown</h4>
-                <p className="text-xs leading-relaxed text-blue-800 dark:text-blue-300/80">
-                  {result.technique === 'k-anonymity' && 
-                    `QUASI-IDENTIFIER MASKING: Attributes like zip code, age, or gender were generalized or suppressed. The data above shows '${previewData[0] ? Object.keys(previewData[0]).filter(k => String(previewData[0][k]).includes('*'))[0] : 'QI'}' values replaced with '*' to ensure no single individual stands out from a crowd of ${result.parameters?.kValue || 5}.`}
-                  {result.technique === 'l-diversity' && 
-                    `SENSITIVE ATTRIBUTE DIVERSIFICATION: We ensured that for every combination of identity traits, the sensitive field '${result.parameters?.sensitiveAttribute}' contains at least ${result.parameters?.lValue} different possibilities. This prevents 'Homogeneity Attacks' where an attacker knows you're in a group but could otherwise guess your status.`}
-                  {result.technique === 'differential-privacy' && 
-                    `NOISE INJECTION (LAPLACE): Statistical noise was mathematically added to numeric values. This means the specific values in the table above are 'perturbed'—they are close to the truth but contain a random offset (ε=${result.parameters?.epsilon}) that makes it impossible to reverse-engineer any specific person's raw data.`}
-                  {result.technique === 'synthetic-data' && 
-                    `STATISTICAL REPLICATION: None of the records above existed in your original file. They are 'synthetic twins' that maintain the same averages, correlations, and trends as your real data but carry zero risk of exposing real people.`}
-                  {result.technique === 't-closeness' && 
-                    `DISTRIBUTION ALIGNMENT: The spread of sensitive values in each group was forced to match the global average. This stops 'Skewness Attacks' where an attacker learns something new just by seeing how much a specific group differs from the general population.`}
-                </p>
+                </thead>
+                <tbody>
+                  {previewData.map((row, i) => (
+                    <tr key={i} className="border-b last:border-0 hover:bg-muted/40 transition-colors">
+                      {columns.map(col => (
+                        <td key={col} className="p-2 whitespace-nowrap">
+                          {String(row[col]).includes('*') || row[col] === null ? (
+                            <span className="text-amber-600 font-bold">{String(row[col]) || 'NULL'}</span>
+                          ) : (
+                            <span className="text-foreground">{String(row[col])}</span>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            
+            <div className="mt-4 p-4 rounded-lg bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/20">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-md">
+                  <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200">Enhancement Breakdown</h4>
+                  <p className="text-xs leading-relaxed text-blue-800 dark:text-blue-300/80">
+                    {result.technique === 'k-anonymity' && 
+                      `QUASI-IDENTIFIER MASKING: Attributes like zip code, age, or gender were generalized or suppressed. The data above shows '${previewData[0] ? Object.keys(previewData[0]).filter(k => String(previewData[0][k]).includes('*'))[0] : 'QI'}' values replaced with '*' to ensure no single individual stands out from a crowd of ${result.parameters?.kValue || 5}.`}
+                    {result.technique === 'l-diversity' && 
+                      `SENSITIVE ATTRIBUTE DIVERSIFICATION: We ensured that for every combination of identity traits, the sensitive field '${result.parameters?.sensitiveAttribute}' contains at least ${result.parameters?.lValue} different possibilities. This prevents 'Homogeneity Attacks' where an attacker knows you're in a group but could otherwise guess your status.`}
+                    {result.technique === 'differential-privacy' && 
+                      `NOISE INJECTION (LAPLACE): Statistical noise was mathematically added to numeric values. This means the specific values in the table above are 'perturbed'—they are close to the truth but contain a random offset (ε=${result.parameters?.epsilon}) that makes it impossible to reverse-engineer any specific person's raw data.`}
+                    {result.technique === 'synthetic-data' && 
+                      `STATISTICAL REPLICATION: None of the records above existed in your original file. They are 'synthetic twins' that maintain the same averages, correlations, and trends as your real data but carry zero risk of exposing real people.`}
+                    {result.technique === 't-closeness' && 
+                      `DISTRIBUTION ALIGNMENT: The spread of sensitive values in each group was forced to match the global average. This stops 'Skewness Attacks' where an attacker learns something new just by seeing how much a specific group differs from the general population.`}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Enhanced File Access
+                </CardTitle>
+                <CardDescription className="text-xs">View or download the complete enhanced dataset</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Eye className="h-4 w-4" />
+                    Full Data View
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+                  <DialogHeader>
+                    <DialogTitle>Enhanced Dataset (Full View)</DialogTitle>
+                  </DialogHeader>
+                  <div className="flex-1 overflow-auto rounded-md border mt-4">
+                    <table className="w-full text-[11px] font-mono">
+                      <thead className="sticky top-0 bg-background z-10">
+                        <tr className="border-b bg-muted/50">
+                          {columns.map(col => (
+                            <th key={col} className="p-2 text-left font-semibold text-muted-foreground uppercase tracking-wider">{col}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allData.map((row, i) => (
+                          <tr key={i} className="border-b last:border-0 hover:bg-muted/40 transition-colors">
+                            {columns.map(col => (
+                              <td key={col} className="p-2 whitespace-nowrap">
+                                {String(row[col]).includes('*') || row[col] === null ? (
+                                  <span className="text-amber-600 font-bold">{String(row[col]) || 'NULL'}</span>
+                                ) : (
+                                  <span className="text-foreground">{String(row[col])}</span>
+                                )}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              <Button variant="outline" size="sm" className="gap-2" onClick={downloadCSV}>
+                <Download className="h-4 w-4" />
+                Download CSV
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2" onClick={downloadExcel}>
+                <Download className="h-4 w-4" />
+                Download Excel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   };
 
