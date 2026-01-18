@@ -246,6 +246,7 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
           </Card>
         </div>
         {renderDataPreview()}
+        {renderFileAccess()}
       </div>
     );
   };
@@ -274,6 +275,7 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
         </Card>
       </div>
       {renderDataPreview()}
+      {renderFileAccess()}
     </div>
   );
 
@@ -323,9 +325,9 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
             </CardContent>
           </Card>
           {renderDataPreview()}
+          {renderFileAccess()}
         </div>
       )}
-      {renderFileAccess()}
     </div>
   );
 }
