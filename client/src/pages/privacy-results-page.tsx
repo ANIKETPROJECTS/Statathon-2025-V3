@@ -12,6 +12,8 @@ interface PrivacyResult {
   informationLoss: number;
   equivalenceClasses?: number;
   avgGroupSize?: number;
+  minGroupSize?: number;
+  maxGroupSize?: number;
   privacyRisk?: number;
   diverseClasses?: number;
   violatingClasses?: number;
@@ -19,6 +21,8 @@ interface PrivacyResult {
   satisfyingClasses?: number;
   avgDistance?: number;
   maxDistance?: number;
+  parameters?: any;
+  processedData?: any[];
 }
 
 export default function PrivacyResultsPage() {

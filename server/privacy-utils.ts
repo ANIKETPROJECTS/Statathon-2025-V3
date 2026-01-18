@@ -80,7 +80,12 @@ export function applyKAnonymityEnhanced(
   const avgGroupSize = groupSizes.length > 0 ? processedData.length / groupSizes.length : 0;
   const minGroupSize = groupSizes.length > 0 ? Math.min(...groupSizes) : 0;
   const maxGroupSize = groupSizes.length > 0 ? Math.max(...groupSizes) : 0;
-  const privacyRisk = 1 / (minGroupSize || kValue || 1);
+  
+  // Safety Score should be high (close to 1) when minGroupSize is large
+  // Risk = 1 / minGroupSize
+  // Score = 1 - Risk
+  const risk = 1 / (minGroupSize || 1);
+  const privacyRisk = risk; 
 
   return { 
     processedData, 

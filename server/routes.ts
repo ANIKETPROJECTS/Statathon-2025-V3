@@ -634,7 +634,7 @@ export async function registerRoutes(
         userId: req.user!.id,
         technique: "k-anonymity",
         method,
-        parameters: { kValue, suppressionLimit, quasiIdentifiers, equivalenceClasses, avgGroupSize, privacyRisk },
+        parameters: { kValue, suppressionLimit, quasiIdentifiers, equivalenceClasses, avgGroupSize, minGroupSize, maxGroupSize, privacyRisk },
         processedData,
         recordsSuppressed,
         informationLoss,
