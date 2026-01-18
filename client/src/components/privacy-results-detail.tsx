@@ -282,11 +282,62 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
   return (
     <div className="space-y-6 pb-20">
       <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <Badge className="bg-green-500 hover:bg-green-600 text-white border-0 py-1">Success</Badge>
-          <h2 className="text-lg font-bold tracking-tight">Enhancement Finalized</h2>
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <Badge className="bg-green-500 hover:bg-green-600 text-white border-0 py-1">Success</Badge>
+              <h2 className="text-lg font-bold tracking-tight">Enhancement Finalized</h2>
+            </div>
+            <p className="text-xs text-muted-foreground">The data has been mathematically transformed using {result.technique.replace("-", " ")} logic.</p>
+          </div>
+          <div className="flex gap-2">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="default" size="sm" className="gap-2 bg-blue-600 hover:bg-blue-700">
+                  <Eye className="h-4 w-4" />
+                  View Enhanced Data
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+                <DialogHeader>
+                  <DialogTitle>Enhanced Dataset (Full View)</DialogTitle>
+                </DialogHeader>
+                <div className="flex-1 overflow-auto rounded-md border mt-4">
+                  {result.processedData && result.processedData.length > 0 && (
+                    <table className="w-full text-[11px] font-mono">
+                      <thead className="sticky top-0 bg-background z-10">
+                        <tr className="border-b bg-muted/50">
+                          {Object.keys(result.processedData[0]).map(col => (
+                            <th key={col} className="p-2 text-left font-semibold text-muted-foreground uppercase tracking-wider">{col}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {result.processedData?.map((row, i) => (
+                          <tr key={i} className="border-b last:border-0 hover:bg-muted/40 transition-colors">
+                            {Object.keys(result.processedData![0]).map(col => (
+                              <td key={col} className="p-2 whitespace-nowrap">
+                                {String(row[col]).includes('*') || row[col] === null ? (
+                                  <span className="text-amber-600 font-bold">{String(row[col]) || 'NULL'}</span>
+                                ) : (
+                                  <span className="text-foreground">{String(row[col])}</span>
+                                )}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
+            <Button variant="outline" size="sm" className="gap-2" onClick={downloadCSV}>
+              <Download className="h-4 w-4" />
+              Download
+            </Button>
+          </div>
         </div>
-        <p className="text-xs text-muted-foreground">The data has been mathematically transformed using {result.technique.replace("-", " ")} logic.</p>
       </div>
 
       <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
