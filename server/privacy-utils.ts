@@ -81,9 +81,8 @@ export function applyKAnonymityEnhanced(
   const minGroupSize = groupSizes.length > 0 ? Math.min(...groupSizes) : 0;
   const maxGroupSize = groupSizes.length > 0 ? Math.max(...groupSizes) : 0;
   
-  // Safety Score should be high (close to 1) when minGroupSize is large
-  // Risk = 1 / minGroupSize
-  // Score = 1 - Risk
+  // Safety Score = (1 - 1/minGroupSize) * 100
+  // For K-Anonymity, the risk is 1/k_min.
   const risk = 1 / (minGroupSize || 1);
   const privacyRisk = risk; 
 
