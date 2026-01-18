@@ -622,7 +622,16 @@ export async function registerRoutes(
       }
 
       const data = dataset.data as any[];
-      const { processedData, recordsSuppressed, informationLoss, equivalenceClasses, avgGroupSize, privacyRisk } = applyKAnonymityEnhanced(
+      const { 
+        processedData, 
+        recordsSuppressed, 
+        informationLoss, 
+        equivalenceClasses, 
+        avgGroupSize, 
+        minGroupSize, 
+        maxGroupSize, 
+        privacyRisk 
+      } = applyKAnonymityEnhanced(
         data,
         quasiIdentifiers,
         kValue,
@@ -634,7 +643,16 @@ export async function registerRoutes(
         userId: req.user!.id,
         technique: "k-anonymity",
         method,
-        parameters: { kValue, suppressionLimit, quasiIdentifiers, equivalenceClasses, avgGroupSize, minGroupSize, maxGroupSize, privacyRisk },
+        parameters: { 
+          kValue, 
+          suppressionLimit, 
+          quasiIdentifiers, 
+          equivalenceClasses, 
+          avgGroupSize, 
+          minGroupSize, 
+          maxGroupSize, 
+          privacyRisk 
+        },
         processedData,
         recordsSuppressed,
         informationLoss,

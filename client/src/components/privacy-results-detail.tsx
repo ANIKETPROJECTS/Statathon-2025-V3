@@ -220,9 +220,9 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
 
   const renderKAnonymityDetails = () => {
     const groupDistData = [
-      { name: 'Min Size', value: result.minGroupSize || 0 },
-      { name: 'Avg Size', value: result.avgGroupSize || 0 },
-      { name: 'Max Size', value: result.maxGroupSize || 0 },
+      { name: 'Min Size', value: result.minGroupSize || result.parameters?.minGroupSize || 0 },
+      { name: 'Avg Size', value: result.avgGroupSize || result.parameters?.avgGroupSize || 0 },
+      { name: 'Max Size', value: result.maxGroupSize || result.parameters?.maxGroupSize || 0 },
     ];
     return (
       <div className="space-y-6">
@@ -239,7 +239,7 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
             <CardHeader><CardTitle className="text-sm">Identity Protection</CardTitle></CardHeader>
             <CardContent className="flex items-center justify-center relative h-[200px]">
               <div className="text-center">
-                <p className="text-4xl font-black text-green-600">{(100 - (result.privacyRisk || 0) * 100).toFixed(0)}%</p>
+                <p className="text-4xl font-black text-green-600">{(100 - (result.privacyRisk || result.parameters?.privacyRisk || 0) * 100).toFixed(0)}%</p>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Safety Score</p>
                 <div className="mt-4 text-left space-y-2">
                   <div className="flex items-center gap-2 text-[10px]">
@@ -248,7 +248,7 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
                   </div>
                   <div className="flex items-center gap-2 text-[10px]">
                     <CheckCircle className="h-3 w-3 text-green-500" />
-                    <span>Minimum group size: {result.minGroupSize || result.parameters?.kValue}</span>
+                    <span>Minimum group size: {result.minGroupSize || result.parameters?.minGroupSize || result.parameters?.kValue}</span>
                   </div>
                 </div>
               </div>
