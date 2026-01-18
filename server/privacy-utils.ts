@@ -89,7 +89,7 @@ export function applyKAnonymityEnhanced(
   const safetyScore = Math.min(100, (minGroupSize / kValue) * 100);
   const privacyRisk = 1 - (safetyScore / 100);
 
-  console.log(`[K-Anonymity] kValue: ${kValue}, minGroupSize: ${minGroupSize}, safetyScore: ${safetyScore}%`);
+  console.log(`[K-Anonymity Debug] kValue: ${kValue}, minGroupSize: ${minGroupSize}, safetyScore: ${safetyScore.toFixed(2)}%, recordsSuppressed: ${currentSuppressed}`);
 
   return { 
     processedData, 

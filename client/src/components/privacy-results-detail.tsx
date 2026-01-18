@@ -229,8 +229,16 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
       { name: 'Max Size', value: maxS },
     ];
     
-    // Calculate safety score correctly: (1 - 1/minSize) * 100
-    const safetyScore = minS > 1 ? (100 * (1 - 1 / minS)) : 0;
+    // Calculate safety score
+    const safetyScore = result.privacyRisk !== undefined ? result.privacyRisk : (minS > 1 ? (100 * (1 - 1 / minS)) : 0);
+    
+    console.log("[PrivacyResultsDetail] Render K-Anonymity Details", {
+      minS,
+      avgS,
+      maxS,
+      privacyRisk: result.privacyRisk,
+      calculatedSafetyScore: safetyScore
+    });
 
     return (
       <div className="space-y-6">
