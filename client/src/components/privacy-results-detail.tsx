@@ -275,7 +275,6 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
         </Card>
       </div>
       {renderDataPreview()}
-      {renderFileAccess()}
     </div>
   );
 
@@ -303,7 +302,7 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
                   <DialogTitle>Enhanced Dataset (Full View)</DialogTitle>
                 </DialogHeader>
                 <div className="flex-1 overflow-auto rounded-md border mt-4">
-                  {result.processedData && result.processedData.length > 0 && (
+                  {result.processedData && result.processedData.length > 0 ? (
                     <table className="w-full text-[11px] font-mono">
                       <thead className="sticky top-0 bg-background z-10">
                         <tr className="border-b bg-muted/50">
@@ -313,7 +312,7 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
                         </tr>
                       </thead>
                       <tbody>
-                        {result.processedData?.map((row, i) => (
+                        {result.processedData.map((row, i) => (
                           <tr key={i} className="border-b last:border-0 hover:bg-muted/40 transition-colors">
                             {Object.keys(result.processedData![0]).map(col => (
                               <td key={col} className="p-2 whitespace-nowrap">
@@ -328,6 +327,10 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
                         ))}
                       </tbody>
                     </table>
+                  ) : (
+                    <div className="p-8 text-center text-muted-foreground">
+                      No processed data available to display. All records may have been suppressed based on privacy constraints.
+                    </div>
                   )}
                 </div>
               </DialogContent>
