@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
-import { CheckCircle, AlertCircle, TrendingDown, Users, Shield, Zap, Info, Filter } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, ScatterChart, Scatter, ZAxis } from "recharts";
+import { CheckCircle, AlertCircle, TrendingDown, Users, Shield, Zap, Info, Filter, Layers } from "lucide-react";
 
 interface DetailedResult {
   technique: string;
@@ -78,7 +78,7 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
               <CardDescription>Likelihood of individual re-identification</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-[250px] flex items-center justify-center">
+              <div className="h-[250px] flex items-center justify-center relative">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -95,7 +95,7 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
-                <div className="absolute text-center">
+                <div className="absolute inset-0 flex flex-col items-center justify-center pt-8">
                   <p className="text-2xl font-bold">{((result.privacyRisk || 0) * 100).toFixed(1)}%</p>
                   <p className="text-[10px] uppercase text-muted-foreground">Risk Score</p>
                 </div>
@@ -109,7 +109,7 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
             <CardTitle className="text-sm font-medium">Equivalence Class Summary Table</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
@@ -138,6 +138,122 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
                     <td className="p-2 font-medium">Information Loss</td>
                     <td className="p-2">{(result.informationLoss * 100).toFixed(2)}%</td>
                     <td className="p-2 text-muted-foreground">Detail lost due to suppression/generalization</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </>
+    );
+  };
+
+  const renderLDiversityDetails = () => {
+    const diversityData = [
+      { name: 'Avg Diversity', value: result.avgDiversity || 0 },
+      { name: 'Target (L)', value: result.parameters?.lValue || 0 },
+    ];
+
+    const classCompositionData = [
+      { name: 'Diverse Classes', value: result.diverseClasses || 0, color: '#10b981' },
+      { name: 'Violating Classes', value: result.violatingClasses || 0, color: '#ef4444' },
+    ];
+
+    return (
+      <>
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Layers className="h-4 w-4" />
+                Diversity Benchmark (L-Value)
+              </CardTitle>
+              <CardDescription>Comparison of target vs. actual diversity</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={diversityData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                  <XAxis type="number" />
+                  <YAxis dataKey="name" type="category" />
+                  <Tooltip />
+                  <Bar dataKey="value" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Filter className="h-4 w-4" />
+                Class Compliance Status
+              </CardTitle>
+              <CardDescription>Records satisfying L-Diversity constraint</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[250px] flex items-center justify-center">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={classCompositionData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {classCompositionData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Attribute Variance Analysis</CardTitle>
+            <CardDescription>Mathematical breakdown of L-Diversity effectiveness</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="p-2 text-left font-medium">Attribute Metric</th>
+                    <th className="p-2 text-left font-medium">Value</th>
+                    <th className="p-2 text-left font-medium">Analysis</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b">
+                    <td className="p-2 font-medium">Average L-Diversity</td>
+                    <td className="p-2 font-bold">{result.avgDiversity?.toFixed(2)}</td>
+                    <td className="p-2 text-muted-foreground">Mean number of distinct sensitive values per group</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="p-2 font-medium">Compliance Rate</td>
+                    <td className="p-2">
+                      {(((result.diverseClasses || 0) / ((result.diverseClasses || 0) + (result.violatingClasses || 0))) * 100).toFixed(1)}%
+                    </td>
+                    <td className="p-2 text-muted-foreground">Percentage of groups meeting the L={result.parameters?.lValue} target</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="p-2 font-medium">Sensitive Attribute</td>
+                    <td className="p-2"><Badge variant="outline">{result.parameters?.sensitiveAttribute}</Badge></td>
+                    <td className="p-2 text-muted-foreground">Primary variable targeted for diversity enhancement</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2 font-medium">Suppression Impact</td>
+                    <td className="p-2">{result.recordsSuppressed} records</td>
+                    <td className="p-2 text-muted-foreground">Records removed from classes that could not meet diversity</td>
                   </tr>
                 </tbody>
               </table>
@@ -217,7 +333,8 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
         </Card>
       </div>
 
-      {result.technique === "k-anonymity" ? renderKAnonymityDetails() : (
+      {result.technique === "k-anonymity" ? renderKAnonymityDetails() : 
+       result.technique === "l-diversity" ? renderLDiversityDetails() : (
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
             <CardHeader>
