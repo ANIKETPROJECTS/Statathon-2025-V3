@@ -83,7 +83,7 @@ export function applyKAnonymityEnhanced(
   
   // Safety Score = (1 - 1/minGroupSize) * 100
   // For K-Anonymity, the risk is 1/k_min.
-  const risk = 1 / (minGroupSize || 1);
+  const risk = 1 / (minGroupSize || kValue || 1);
   const privacyRisk = risk; 
 
   return { 

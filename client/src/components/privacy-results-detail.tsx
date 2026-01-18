@@ -219,11 +219,19 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
   };
 
   const renderKAnonymityDetails = () => {
+    const minS = result.minGroupSize || result.parameters?.minGroupSize || result.parameters?.kValue || 0;
+    const avgS = result.avgGroupSize || result.parameters?.avgGroupSize || 0;
+    const maxS = result.maxGroupSize || result.parameters?.maxGroupSize || 0;
+    
     const groupDistData = [
-      { name: 'Min Size', value: result.minGroupSize || result.parameters?.minGroupSize || 0 },
-      { name: 'Avg Size', value: result.avgGroupSize || result.parameters?.avgGroupSize || 0 },
-      { name: 'Max Size', value: result.maxGroupSize || result.parameters?.maxGroupSize || 0 },
+      { name: 'Min Size', value: minS },
+      { name: 'Avg Size', value: avgS },
+      { name: 'Max Size', value: maxS },
     ];
+    
+    // Calculate safety score correctly: (1 - 1/minSize) * 100
+    const safetyScore = minS > 1 ? (100 * (1 - 1 / minS)) : 0;
+
     return (
       <div className="space-y-6">
         <div className="grid gap-6 md:grid-cols-2">
@@ -239,7 +247,7 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
             <CardHeader><CardTitle className="text-sm">Identity Protection</CardTitle></CardHeader>
             <CardContent className="flex items-center justify-center relative h-[200px]">
               <div className="text-center">
-                <p className="text-4xl font-black text-green-600">{(100 - (result.privacyRisk || result.parameters?.privacyRisk || 0) * 100).toFixed(0)}%</p>
+                <p className="text-4xl font-black text-green-600">{safetyScore.toFixed(0)}%</p>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Safety Score</p>
                 <div className="mt-4 text-left space-y-2">
                   <div className="flex items-center gap-2 text-[10px]">
@@ -248,7 +256,7 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
                   </div>
                   <div className="flex items-center gap-2 text-[10px]">
                     <CheckCircle className="h-3 w-3 text-green-500" />
-                    <span>Minimum group size: {result.minGroupSize || result.parameters?.minGroupSize || result.parameters?.kValue}</span>
+                    <span>Minimum group size: {minS}</span>
                   </div>
                 </div>
               </div>
