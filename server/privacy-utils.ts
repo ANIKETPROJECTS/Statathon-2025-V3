@@ -81,10 +81,15 @@ export function applyKAnonymityEnhanced(
   const minGroupSize = groupSizes.length > 0 ? Math.min(...groupSizes) : 0;
   const maxGroupSize = groupSizes.length > 0 ? Math.max(...groupSizes) : 0;
   
-  // Safety Score = (1 - 1/minGroupSize) * 100
-  // For K-Anonymity, the risk is 1/k_min.
-  const risk = 1 / (minGroupSize || kValue || 1);
-  const privacyRisk = risk; 
+  // Safety Score Calculation
+  // We want to measure how close we are to the target kValue.
+  // If minGroupSize >= kValue, we are safe (100%).
+  // If minGroupSize < kValue, the safety score should reflect the gap.
+  // A common metric is: score = (minGroupSize / kValue) * 100
+  const safetyScore = Math.min(100, (minGroupSize / kValue) * 100);
+  const privacyRisk = 1 - (safetyScore / 100);
+
+  console.log(`[K-Anonymity] kValue: ${kValue}, minGroupSize: ${minGroupSize}, safetyScore: ${safetyScore}%`);
 
   return { 
     processedData, 
@@ -94,7 +99,7 @@ export function applyKAnonymityEnhanced(
     avgGroupSize,
     minGroupSize,
     maxGroupSize,
-    privacyRisk
+    privacyRisk: safetyScore // Re-purposing this to pass the score back
   };
 }
 
