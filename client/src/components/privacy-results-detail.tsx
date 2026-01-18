@@ -241,6 +241,16 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
               <div className="text-center">
                 <p className="text-4xl font-black text-green-600">{(100 - (result.privacyRisk || 0) * 100).toFixed(0)}%</p>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Safety Score</p>
+                <div className="mt-4 text-left space-y-2">
+                  <div className="flex items-center gap-2 text-[10px]">
+                    <CheckCircle className="h-3 w-3 text-green-500" />
+                    <span>Re-identification risk minimized</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px]">
+                    <CheckCircle className="h-3 w-3 text-green-500" />
+                    <span>Minimum group size: {result.minGroupSize || result.parameters?.kValue}</span>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>

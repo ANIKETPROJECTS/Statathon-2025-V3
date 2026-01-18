@@ -39,7 +39,7 @@ export function applyKAnonymityEnhanced(
   });
 
   let processedData: any[] = [];
-  let suppressedCount = 0;
+  let currentSuppressed = 0;
   const maxSuppressed = Math.floor(data.length * suppressionLimit);
   const groupSizes: number[] = [];
 
@@ -48,16 +48,23 @@ export function applyKAnonymityEnhanced(
       processedData.push(...records);
       groupSizes.push(records.length);
     } else {
-      suppressedCount += records.length;
-      if (suppressedCount <= maxSuppressed) {
+      if (currentSuppressed + records.length <= maxSuppressed) {
         // Suppress these records
+        currentSuppressed += records.length;
       } else {
         // Generalize instead
         const generalizedRecords = records.map((r) => {
           const generalized = { ...r };
           quasiIdentifiers.forEach((qi) => {
-            if (typeof generalized[qi] === "number") {
-              generalized[qi] = Math.floor(generalized[qi] / 10) * 10;
+            const val = generalized[qi];
+            if (typeof val === "number") {
+              // Generalize numeric values to ranges of 10
+              const lower = Math.floor(val / 10) * 10;
+              const upper = lower + 10;
+              generalized[qi] = `${lower}-${upper}`;
+            } else if (typeof val === "string") {
+              // Mask string values
+              generalized[qi] = "*";
             } else {
               generalized[qi] = "*";
             }
@@ -70,16 +77,16 @@ export function applyKAnonymityEnhanced(
     }
   });
 
-  const avgGroupSize = groupSizes.length > 0 ? groupSizes.reduce((a, b) => a + b, 0) / groupSizes.length : 0;
+  const avgGroupSize = groupSizes.length > 0 ? processedData.length / groupSizes.length : 0;
   const minGroupSize = groupSizes.length > 0 ? Math.min(...groupSizes) : 0;
   const maxGroupSize = groupSizes.length > 0 ? Math.max(...groupSizes) : 0;
-  const privacyRisk = suppressedCount > 0 ? 1 / kValue : 1 / avgGroupSize;
+  const privacyRisk = 1 / (minGroupSize || kValue || 1);
 
   return { 
     processedData, 
-    recordsSuppressed: suppressedCount, 
-    informationLoss: suppressedCount / data.length,
-    equivalenceClasses: groups.size,
+    recordsSuppressed: currentSuppressed, 
+    informationLoss: currentSuppressed / data.length,
+    equivalenceClasses: groupSizes.length,
     avgGroupSize,
     minGroupSize,
     maxGroupSize,
