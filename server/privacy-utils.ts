@@ -122,6 +122,7 @@ export function applyLDiversityDistinct(
   minDiversity: number;
   maxDiversity: number;
   diversityScore: number;
+  privacyRisk?: number;
 } {
   const ecMap = new Map<string, EquivalenceClassInfo>();
   const sensitiveValuesByKey = new Map<string, Set<string>>();
@@ -178,6 +179,7 @@ export function applyLDiversityDistinct(
     avgDiversity,
     minDiversity,
     maxDiversity,
+    privacyRisk: diversityScore, // Repurpose privacyRisk for the score
     diversityScore
   };
 }
