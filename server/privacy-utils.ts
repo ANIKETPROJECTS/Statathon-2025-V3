@@ -163,8 +163,9 @@ export function applyLDiversityDistinct(
         const generalized = { ...r };
         quasiIdentifiers.forEach((qi) => {
           const val = generalized[qi];
-          if (typeof val === "number") {
-            const lower = Math.floor(val / 10) * 10;
+          if (typeof val === "number" || (typeof val === "string" && !isNaN(Number(val)))) {
+            const numVal = Number(val);
+            const lower = Math.floor(numVal / 10) * 10;
             const upper = lower + 10;
             generalized[qi] = `${lower}-${upper}`;
           } else {
@@ -177,7 +178,6 @@ export function applyLDiversityDistinct(
       processedData.push(...generalizedRecords);
       // We count these as "transformed/lossy" but they ARE in the output
       // Only count records as suppressed if they are actually removed.
-      // In this distinct version, we are not suppressing unless specifically told to.
       violatingClasses++;
     }
   });
