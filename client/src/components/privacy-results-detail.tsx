@@ -291,8 +291,11 @@ export function PrivacyResultsDetail({ result }: { result: DetailedResult }) {
     const maxD = (result as any).maxDiversity ?? params?.maxDiversity ?? 0;
     const targetD = params?.lValue ?? 0;
     const score = (result as any).privacyRisk ?? params?.privacyRisk ?? 0;
+    const recordsGenerated = result.processedData?.length || 0;
+    const recordsSuppressed = result.recordsSuppressed || 0;
+    const informationLoss = result.informationLoss || 0;
     
-    console.log("L-Diversity Parsed Values:", { minD, avgD, maxD, targetD, score });
+    console.log("L-Diversity Parsed Values:", { minD, avgD, maxD, targetD, score, recordsGenerated, recordsSuppressed });
 
     const diversityDistData = [
       { name: 'Min Diversity', value: minD },

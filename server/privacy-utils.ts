@@ -150,22 +150,37 @@ export function applyLDiversityDistinct(
   let violatingClasses = 0;
   const diversities: number[] = [];
 
-    const minRecordsNeeded = lValue;
-    
-    equivalenceClasses.forEach((ec) => {
-      diversities.push(ec.distinctCount);
-      if (ec.distinctCount >= lValue) {
-        processedData.push(...ec.records);
-        diverseClasses++;
-      } else {
-        // Log the reason for suppression
-        console.log(`[L-Diversity Violation] EC Key: ${ec.key}, Distinct Count: ${ec.distinctCount} < L: ${lValue}, Size: ${ec.size}`);
-        
-        // Count as suppressed
-        recordsSuppressed += ec.size;
-        violatingClasses++;
-      }
-    });
+  equivalenceClasses.forEach((ec) => {
+    diversities.push(ec.distinctCount);
+    if (ec.distinctCount >= lValue) {
+      processedData.push(...ec.records);
+      diverseClasses++;
+    } else {
+      // Generalization strategy for L-diversity:
+      // If a group doesn't meet L-diversity, we generalize the quasi-identifiers
+      // similar to K-anonymity, rather than just suppressing everything.
+      const generalizedRecords = ec.records.map((r) => {
+        const generalized = { ...r };
+        quasiIdentifiers.forEach((qi) => {
+          const val = generalized[qi];
+          if (typeof val === "number") {
+            const lower = Math.floor(val / 10) * 10;
+            const upper = lower + 10;
+            generalized[qi] = `${lower}-${upper}`;
+          } else {
+            generalized[qi] = "*";
+          }
+        });
+        return generalized;
+      });
+      
+      processedData.push(...generalizedRecords);
+      // We count these as "transformed/lossy" but they ARE in the output
+      // Only count records as suppressed if they are actually removed.
+      // In this distinct version, we are not suppressing unless specifically told to.
+      violatingClasses++;
+    }
+  });
 
   const avgDiversity = diversities.length > 0 ? diversities.reduce((a, b) => a + b, 0) / diversities.length : 0;
   const minDiversity = diversities.length > 0 ? Math.min(...diversities) : 0;
